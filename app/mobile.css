@@ -1,0 +1,197 @@
+.mobileNav{display:none}
+.cartV2>div.mt-7.grid{grid-template-columns:1fr}
+.cartV2 article{grid-template-columns:86px minmax(0,1fr)}
+.cartV2 article .visual{height:110px}
+.cartV2 article .visualBtn{height:110px}
+.authV2>div{grid-template-columns:1fr}
+.authV2 form>div.mt-6.grid{grid-template-columns:minmax(0,1fr)}
+.authV2 input:focus{border-color:#654cff;box-shadow:0 0 0 3px #654cff18}
+@media(min-width:640px){.authV2 form:has(input[name="name"])>div.mt-6.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:768px){
+ .cartV2>div.mt-7.grid>div:first-child>div:first-child{grid-template-columns:110px minmax(0,1fr) 110px 120px}
+ .cartV2 article{grid-template-columns:110px minmax(0,1fr) 110px 120px}
+}
+@media(min-width:1024px){.cartV2>div.mt-7.grid{grid-template-columns:minmax(0,1fr) 360px}.authV2>div{grid-template-columns:.85fr 1.15fr}}
+@media(max-width:720px){
+ html,body{max-width:100%;overflow-x:hidden}
+ body{padding-bottom:68px}
+ body:has(.admin){padding-bottom:0}
+ .ticker{height:27px;padding:0 14px;justify-content:center;font-size:8px;letter-spacing:1.2px}
+ .ticker span:before{margin-right:9px}
+ body>div>header{height:62px;padding:0 14px}
+ .logo{width:132px;height:54px;flex:0 0 auto}
+ .tools{gap:1px}
+ .tools>button{min-width:36px;height:40px;font-size:12px}
+ .tools>button:first-child,.tools .adminBtn{display:none}
+ .tools .memberBtn{min-width:36px!important;border:0!important;padding:0!important}
+ .memberLabel{display:none}
+ .tools i{right:0;top:-3px}
+
+ .hero{display:block;min-height:0;padding-bottom:1px}
+ .heroCopy{padding:48px 18px 18px}
+ .eyebrow{font-size:8px;letter-spacing:2px}
+ .eyebrow:before{width:24px;margin-right:9px}
+ .hero h1{font-size:40px;line-height:1.04;letter-spacing:-2px;margin:20px 0}
+ .heroCopy>p:not(.eyebrow){font-size:12px;line-height:1.75}
+ .heroCopy .primary,.heroCopy .ghost{display:block;width:100%;min-height:50px;margin:0}
+ .heroCopy .ghost{margin-top:10px}
+ .rideCarousel{height:245px;margin:14px 16px 42px;padding:8px}
+ .rideCarousel:before{inset:-5px 20px 5px -5px}
+ .photoFrame{clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+ .photoLabel{left:18px;right:16px;bottom:17px;padding-left:10px}
+ .photoLabel h2{font-size:18px}
+ .photoLabel p{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .arrow{width:38px;height:38px}
+ .dots{bottom:-20px;right:3px}
+
+ .fit{margin:0 14px;padding:25px 16px;display:block}
+ .fit:before{right:14px}
+ .fit:after{display:none}
+ .fit h2{font-size:26px}
+ .fitFields{grid-template-columns:1fr;gap:9px;margin-top:18px}
+ .fitFields label{padding:9px 12px;border-left:1px solid #e1e1e7}
+ .fitFields button{width:100%;min-height:55px}
+
+ .section,.catalog,.cartPage,.brandPage{padding:52px 14px}
+ .featuredProductsIntro{padding-bottom:28px}
+ .featuredProductsIntro h2{font-size:30px}
+ .featuredProductSection>.section{padding-top:34px;padding-bottom:46px}
+ .featuredProductHead{flex-direction:column;align-items:stretch;gap:16px;margin-bottom:18px}
+ .featuredProductHead h3{font-size:27px}
+ .featuredProductHead button{width:100%;min-height:44px}
+ .featuredProductSection:first-of-type .featuredProductHead h3:after{display:inline-block;margin-left:6px}
+ .grid,.catalogBody .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .card{min-width:0}
+ .visual{height:165px}
+ .heart{right:8px;top:8px;width:31px;height:31px}
+ .card>div:last-child{padding:11px}
+ .card small{font-size:8px;letter-spacing:.5px}
+ .productName{font-size:12px;line-height:1.45;min-height:43px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .card p b{font-size:12px;white-space:nowrap}
+ .card p button{width:29px;height:29px;flex:0 0 auto}
+
+ .title{align-items:flex-start;gap:12px;margin-bottom:26px}
+ .title h2,.brandStrip h2{font-size:27px}
+ .title>button{font-size:10px;white-space:nowrap;padding-top:7px}
+ .categories{padding:56px 14px}
+ .catGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .catGrid button{height:145px;padding:16px}
+ .catGrid b{font-size:18px;margin-top:35px}
+ .brandExperience{padding:56px 14px}
+ .brandExperienceTitle{margin-bottom:26px}
+ .brandExperienceTitle h2{font-size:28px}
+ .brandRevealGrid{gap:10px}
+ .brandReveal{height:220px}
+ .brandCover{padding:25px}
+ .brandCover b{font-size:38px}
+ .brandCover i{left:25px;bottom:20px}
+ #faq{padding:56px 16px}
+ #faq h2{font-size:30px}
+ #faq summary{gap:12px;padding:20px 0;line-height:1.5}
+ #faq details p{padding-left:30px}
+
+ .pageTitle{padding:10px 0 30px}
+ .pageTitle h1{font-size:35px;line-height:1.12}
+ .pageTitle>p:last-child{font-size:12px;line-height:1.6}
+ .catalogBody{display:block;padding-top:22px}
+ .catalogBody aside{display:flex;flex-direction:row;gap:7px;overflow-x:auto;margin:0 -14px 20px;padding:0 14px 8px;scrollbar-width:none}
+ .catalogBody aside::-webkit-scrollbar{display:none}
+ .catalogBody aside>b,.catalogBody aside>hr,.catalogBody aside>label{display:none}
+ .catalogBody aside button{flex:0 0 auto;border:1px solid #ddd;border-radius:999px;background:#fff;padding:9px 13px;white-space:nowrap}
+ .catalogBody aside button span{display:none}
+ .sort{align-items:center;gap:10px}
+ .sort select{max-width:130px}
+
+ .detail{display:block;padding:52px 14px}
+ .detail .back{top:16px}
+ .detail .visual.big{height:320px;margin-bottom:25px}
+ .detailInfo{padding-top:0}
+ .detailInfo h1{font-size:28px;line-height:1.25}
+ .price{font-size:23px;margin:18px 0}
+ .buy{grid-template-columns:1fr;margin:18px 0}
+ .buy button{min-height:49px}
+ .brandPage article{height:260px;padding:35px 25px}
+ .brandPage article h2{font-size:40px}
+ .brandPage article>b{font-size:320px;top:-50%}
+
+ .cartLayout,.checkLayout{display:block;margin-top:24px}
+ .cartV2 article .visual,.cartV2 article .visualBtn{height:86px}
+ .cartList article{grid-template-columns:78px minmax(0,1fr);gap:13px;padding:13px}
+ .cartList .visual{height:78px}
+ .cartList h3{font-size:14px;line-height:1.35}
+ .cartList article>.qty{display:none}
+ .cartList article>b{display:block;grid-column:2;font-size:13px;margin-top:-8px}
+ .summary{margin-top:15px;padding:22px}
+
+ .checkout{padding:0 14px 70px}
+ .checkTop{height:58px}
+ .checkTop span{display:none}
+ .steps{margin:28px 0}
+ .steps div:not(:last-child):after{width:14px;margin:0 6px}
+ .steps i{width:29px;height:29px;margin-right:0}
+ .steps span{display:none}
+ .form{padding:22px 16px}
+ .form h2{font-size:21px;margin-top:0}
+ .formGrid{grid-template-columns:1fr;gap:14px}
+ .formGrid .wide{grid-column:auto}
+ .choices label{padding:15px 12px;grid-template-columns:25px 1fr}
+ .choices span{line-height:1.45}
+ .form>.next{float:none;width:100%;min-height:50px;margin-top:20px}
+ .notice{line-height:1.6}
+ .done{margin:20px 14px;padding:38px 20px}
+ .done h1{font-size:29px}
+ .done>span{margin:18px 0}
+
+ footer{grid-template-columns:1fr;padding:52px 18px 30px;gap:28px}
+ footer div:first-child>b{font-size:30px}
+ footer small{margin-top:4px;line-height:1.7}
+ .mobileNav{position:fixed;left:0;right:0;bottom:0;z-index:60;height:68px;display:grid;grid-template-columns:repeat(5,1fr);background:#0d0e12;border-top:1px solid #2b2d34;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -8px 30px #0005}
+ .mobileNav.checkoutHidden{display:none}
+ .mobileNav button{position:relative;border:0;background:none;color:#8f929d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0}
+ .mobileNav button.active{color:#fff}
+ .mobileNav button.active:before{content:'';position:absolute;top:0;left:28%;right:28%;height:2px;background:linear-gradient(90deg,#ff7900,#704fff)}
+ .mobileNav i{font-style:normal;font-size:17px;line-height:1}
+ .mobileNav span{font-size:9px}
+ .mobileNav em{position:absolute;top:7px;left:54%;min-width:15px;height:15px;border-radius:8px;background:#654cff;color:#fff;font-size:8px;font-style:normal;display:grid;place-items:center;padding:0 3px}
+ .toast{bottom:82px;width:max-content;max-width:calc(100% - 28px);text-align:center}
+
+ .admin{display:block;margin:0;min-width:0}
+ .admin>aside{position:sticky;top:0;z-index:70;height:auto;max-width:100vw;padding:0;display:flex;flex-direction:row;overflow-x:auto;scrollbar-width:none}
+ .admin>aside::-webkit-scrollbar{display:none}
+ .adminLogo{display:none}
+ .admin aside nav{display:flex;flex-direction:row;gap:0;margin:0}
+ .admin aside nav button{font-size:9px;min-width:82px;padding:10px 7px;text-align:center;border-radius:0;white-space:nowrap}
+ .admin aside nav i{display:block;width:auto;font-size:15px;margin-bottom:4px}
+ .admin aside nav em{position:absolute;margin-left:3px;float:none}
+ .store{margin:0;min-width:55px;border-width:0 0 0 1px;font-size:0}
+ .admin>main>header{height:68px;padding:10px 14px}
+ .admin header p{display:none}
+ .admin header h1{font-size:19px}
+ .admin header>div:last-child{gap:5px}
+ .admin header>div:last-child b{display:none}
+ .dashboard,.adminTable{padding:14px}
+ .date{justify-content:flex-start;flex-wrap:wrap}
+ .date span{width:100%;margin:0 0 4px}
+ .date button{flex:1}
+ .kpis{grid-template-columns:1fr;gap:9px;margin:14px 0}
+ .kpis article{padding:16px}
+ .dashGrid{grid-template-columns:1fr;gap:10px}
+ .dashGrid>section{padding:16px}
+ .orders>p{grid-template-columns:1fr 1fr;gap:6px}
+ .quick>div{grid-template-columns:1fr 1fr}
+ .listTools{align-items:stretch;flex-direction:column;gap:9px}
+ .listTools>div{display:flex;overflow-x:auto}
+ .listTools input{min-width:0;flex:1}
+ .adminTable>section{overflow-x:auto}
+ .adminTable table{min-width:680px}
+ .categoryManager{padding:10px}
+ .categoryManagerTop{padding:20px;flex-direction:column;align-items:flex-start}
+ .categoryRows{padding:7px}
+ .categoryRows article{grid-template-columns:20px 32px minmax(0,1fr) 64px;gap:8px}
+ .categoryRows article>img,.categoryRows article>em{display:none}
+ .categoryPreview{padding:14px;gap:6px;align-items:flex-start;flex-direction:column}
+ .admin main>div.p-8{padding:14px}
+ .admin main>div.p-8>.mb-5{align-items:stretch;flex-direction:column;gap:12px}
+ .admin main>div.p-8>.mb-5 input{width:100%}
+ .admin details summary{grid-template-columns:84px minmax(0,1fr) auto!important;gap:9px;padding:14px}
+}
