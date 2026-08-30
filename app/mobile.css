@@ -11,6 +11,10 @@
  .cartV2>div.mt-7.grid>div:first-child>div:first-child{grid-template-columns:110px minmax(0,1fr) 110px 120px}
  .cartV2 article{grid-template-columns:110px minmax(0,1fr) 110px 120px}
 }
+
+@media(max-width:720px){
+ .admin .ordersManager .orderSummary{grid-template-columns:minmax(0,1fr) auto!important}
+}
 @media(min-width:1024px){.cartV2>div.mt-7.grid{grid-template-columns:minmax(0,1fr) 360px}.authV2>div{grid-template-columns:.85fr 1.15fr}}
 @media(max-width:720px){
  html,body{max-width:100%;overflow-x:hidden}
