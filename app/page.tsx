@@ -1,197 +1,4143 @@
-'use client';
-import {useEffect,useMemo,useState} from 'react';
-type P={id:number,name:string,brand:string,cat:string,price:number,color:string,fit:string[],image?:string};
-const ps:P[]=[
- {id:1,name:'NXR2 街頭全罩安全帽',brand:'SHOEI',cat:'安全帽',price:16800,color:'violet',fit:['全車種']},
- {id:2,name:'HI-SPEED 傳動套件',brand:'POLINI',cat:'傳動',price:6980,color:'blue',fit:['YAMAHA 勁戰六代 2024','YAMAHA FORCE 2.0 2023']},
- {id:3,name:'RS24 後避震器',brand:'MALOSSI',cat:'前後避震',price:12800,color:'red',fit:['SYM JET SL+ 2024','SYM DRG 2023']},
- {id:4,name:'浮動浪花碟盤 260mm',brand:'POLINI',cat:'碟盤',price:4200,color:'silver',fit:['YAMAHA 勁戰六代 2024']},
- {id:5,name:'競技陶瓷煞車皮',brand:'MALOSSI',cat:'煞車皮',price:1680,color:'yellow',fit:['SYM JET SL+ 2024','SYM MMBCU 2024']},
- {id:6,name:'AERO 短版燻黑風鏡',brand:'YEHDA',cat:'風鏡',price:2380,color:'smoke',fit:['YAMAHA FORCE 2.0 2023','SYM DRG 2023']},
- {id:7,name:'GT-Air 3 旅行全罩安全帽',brand:'SHOEI',cat:'安全帽',price:19800,color:'blue',fit:['全車種']},
- {id:8,name:'Glamster 復古全罩安全帽',brand:'SHOEI',cat:'安全帽',price:15800,color:'silver',fit:['全車種']},
- {id:9,name:'EX-ZERO 越野復古安全帽',brand:'SHOEI',cat:'安全帽',price:14600,color:'yellow',fit:['全車種']},
- {id:10,name:'MAXI SPEED 普利盤組',brand:'MALOSSI',cat:'傳動',price:7200,color:'red',fit:['YAMAHA 勁戰六代','SYM JET SL+ 158']},
- {id:11,name:'X-SPECIAL 強化傳動皮帶',brand:'POLINI',cat:'傳動',price:3280,color:'blue',fit:['YAMAHA FORCE 2.0','KYMCO KRV MOTO 180']},
- {id:12,name:'DELTA 可調競技離合器',brand:'MALOSSI',cat:'傳動',price:8600,color:'yellow',fit:['SYM DRGBT','YAMAHA NMAX 155']},
- {id:13,name:'FORK RACING 前叉套件',brand:'POLINI',cat:'前後避震',price:9800,color:'blue',fit:['YAMAHA 勁戰六代','SYM JET SL+ 158']},
- {id:14,name:'RS24 雙槍後避震器',brand:'MALOSSI',cat:'前後避震',price:14800,color:'red',fit:['KYMCO Racing S 150','SYM 迪爵 125']},
- {id:15,name:'街道版預載可調避震器',brand:'YEHDA',cat:'前後避震',price:7880,color:'violet',fit:['YAMAHA FORCE 2.0','SYM MMBCU']},
- {id:16,name:'競技浮動碟盤 220mm',brand:'POLINI',cat:'碟盤',price:3680,color:'silver',fit:['SYM JET SL+ 158','YAMAHA 勁戰六代']},
- {id:17,name:'放射紋浮動碟盤 245mm',brand:'YEHDA',cat:'碟盤',price:3980,color:'blue',fit:['KYMCO KRV MOTO 180','SYM DRGBT']},
- {id:18,name:'後輪輕量化碟盤',brand:'MALOSSI',cat:'碟盤',price:2980,color:'red',fit:['YAMAHA XMAX 300','HONDA FORZA 350']},
- {id:19,name:'ROAD SPORT 街道煞車皮',brand:'POLINI',cat:'煞車皮',price:1280,color:'blue',fit:['全車種']},
- {id:20,name:'SINTERED 金屬燒結煞車皮',brand:'MALOSSI',cat:'煞車皮',price:1980,color:'red',fit:['全車種']},
- {id:21,name:'低粉塵陶瓷煞車皮',brand:'YEHDA',cat:'煞車皮',price:1480,color:'yellow',fit:['全車種']},
- {id:22,name:'TOURING 加高旅行風鏡',brand:'YEHDA',cat:'風鏡',price:3280,color:'blue',fit:['HONDA FORZA 350','YAMAHA XMAX 300']},
- {id:23,name:'CRYSTAL 高透光風鏡',brand:'POLINI',cat:'風鏡',price:2860,color:'silver',fit:['HONDA ADV 350','SYM MAXSYM TL 508']},
- {id:24,name:'RACING 雙曲面風鏡',brand:'MALOSSI',cat:'風鏡',price:3580,color:'red',fit:['YAMAHA NMAX 155','HONDA PCX 160']}
- ,{id:25,name:'原裝進口握把 EVOLUTION 無打洞',brand:'POLINI',cat:'握把',price:0,color:'blue',fit:['全車種／安裝前請確認把手規格'],image:'/media/product-polini-grip.png'}
- ,{id:26,name:'原裝握把 黑／白款 有打洞',brand:'MALOSSI',cat:'握把',price:0,color:'red',fit:['全車種／黑白兩色皆有現貨'],image:'/media/product-malossi-grip.png'}
- ,{id:27,name:'大彈簧 JOYMAX Z+／XMAX300／TRICITY 300',brand:'MALOSSI',cat:'大彈簧',price:0,color:'yellow',fit:['SYM JOYMAX Z+','YAMAHA XMAX 300','YAMAHA TRICITY 300'],image:'/media/product-malossi-spring-joymax.png'}
- ,{id:28,name:'大彈簧 KYMCO KRV 180／G7 K值5',brand:'MALOSSI',cat:'大彈簧',price:0,color:'red',fit:['KYMCO KRV 180','KYMCO G7'],image:'/media/product-malossi-spring-krv.png'}
- ,{id:29,name:'短版大彈簧 G3／悍將／G5／G6／雷霆系列',brand:'POLINI',cat:'大彈簧',price:0,color:'blue',fit:['KYMCO G3／G5／G6','SYM 悍將','KYMCO 雷霆／雷霆王','KYMCO KRV 180／G7'],image:'/media/product-polini-spring-short.png'}
- ,{id:30,name:'大彈簧 馬車／勁戰／OZ150／GTR／BW’S125',brand:'MALOSSI',cat:'大彈簧',price:0,color:'yellow',fit:['YAMAHA 馬車','YAMAHA 勁戰 1～5 代','AEON OZ150','YAMAHA GTR／BW’S125／勁風光'],image:'/media/product-malossi-spring-cygnus.png'}
- ,{id:31,name:'冠軍高流量空濾 FORCE／SMAX 專用',brand:'BMC',cat:'空濾',price:0,color:'red',fit:['YAMAHA FORCE','YAMAHA SMAX'],image:'/media/product-bmc-filter-force.png'}
- ,{id:32,name:'冠軍高流量空濾 水冷六代戰／BWS／FORCE 2.0',brand:'BMC',cat:'空濾',price:0,color:'red',fit:['YAMAHA 水冷勁戰六代','YAMAHA 水冷 BW’S','YAMAHA FORCE 2.0／AUGUR／NMAX'],image:'/media/product-bmc-filter-watercool.png'}
- ,{id:33,name:'冠軍高流量空濾 DRG／MMBCU／4MICA／JET SL',brand:'BMC',cat:'空濾',price:0,color:'red',fit:['SYM DRG 1／2 代','SYM MMBCU／4MICA','SYM JET SL 158','SYM Fiddle DX'],image:'/media/product-bmc-filter-drg.png'}
- ,{id:34,name:'原裝皮帶 BWS125／四代勁戰專用',brand:'MALOSSI',cat:'皮帶',price:0,color:'yellow',fit:['YAMAHA BWS125／BWS 125','YAMAHA 四代勁戰'],image:'/media/product-malossi-belt-bws.png'}
- ,{id:35,name:'原裝皮帶 SUZUKI AN250 專用',brand:'MALOSSI',cat:'皮帶',price:0,color:'yellow',fit:['SUZUKI AN250'],image:'/media/product-malossi-belt-an250.png'}
- ,{id:36,name:'強化皮帶 KYMCO 刺激250／刺激300 專用',brand:'MALOSSI',cat:'皮帶',price:0,color:'yellow',fit:['KYMCO 刺激 250','KYMCO 刺激 300'],image:'/media/product-malossi-belt-kymco.png'}
- ,{id:37,name:'一般皮帶 YAMAHA Cygnus X 125／勁戰',brand:'POLINI',cat:'皮帶',price:0,color:'blue',fit:['YAMAHA Cygnus X 125','YAMAHA 勁戰'],image:'/media/product-polini-belt-cygnus.png'}
- ,{id:38,name:'墨色短風鏡 DOWNTOWN GT 350 專用',brand:'MALOSSI',cat:'風鏡',price:0,color:'smoke',fit:['KYMCO DOWNTOWN GT 350','尺寸：長 42 × 高 40 cm'],image:'/media/product-malossi-screen-downtown.png'}
- ,{id:39,name:'燻黑前風鏡組 ITALJET DRAGSTER 200 專用',brand:'MALOSSI',cat:'風鏡',price:0,color:'smoke',fit:['ITALJET DRAGSTER 200'],image:'/media/product-malossi-screen-dragster.png'}
- ,{id:40,name:'短風鏡 NIKITA 專用',brand:'MALOSSI',cat:'風鏡',price:0,color:'smoke',fit:['KYMCO NIKITA'],image:'/media/product-malossi-screen-nikita.png'}
- ,{id:41,name:'風鏡 HONDA X-ADV 750 專用',brand:'MALOSSI',cat:'風鏡',price:0,color:'smoke',fit:['HONDA X-ADV 750 2017～2020'],image:'/media/product-malossi-screen-xadv.png'}
-];
-const cats=['全部商品','風鏡','傳動','前後避震','碟盤','煞車皮','安全帽','握把','大彈簧','空濾','皮帶'];
-const vehicleModels:Record<string,string[]>={
- HONDA:['FORZA 350','ADV 350','PCX 160','SH 150i','CBR500R','Monkey 125'],
- KYMCO:['KRV MOTO 180','Racing S 150','Like Colombo 150','AK 550 Premium','RTS R 165','RomaGT'],
- SYM:['JET SL+ 158','DRGBT','MMBCU','CLBCU','迪爵 125','MAXSYM TL 508'],
- YAMAHA:['勁戰六代','FORCE 2.0','AUGUR 155','NMAX 155','XMAX 300','MT-15']
+"use client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAutoTranslate } from "./auto-translate";
+type P = {
+  id: number;
+  name: string;
+  brand: string;
+  cat: string;
+  price: number;
+  color: string;
+  fit: string[];
+  image?: string;
 };
-const catImages=['/media/product-malossi-screen-downtown.png','/media/product-polini-belt-cygnus.png','/media/ride-04.jpg','/media/ride-02.jpg','/media/ride-01.jpg','/media/ride-04.jpg','/media/product-polini-grip.png','/media/product-malossi-spring-joymax.png','/media/product-bmc-filter-drg.png','/media/product-malossi-belt-bws.png'];
-const nt=(n:number)=>n>0?`NT$ ${n.toLocaleString()}`:'售價待確認';
-export default function App(){const[page,setPage]=useState('home'),[cart,setCart]=useState<number[]>([]),[fav,setFav]=useState<number[]>([]),[cat,setCat]=useState('全部商品'),[maker,setMaker]=useState(''),[model,setModel]=useState(''),[picked,setPicked]=useState(ps[0]),[step,setStep]=useState(1),[tab,setTab]=useState('數據總覽'),[toast,setToast]=useState(''),[memberLoggedIn,setMemberLoggedIn]=useState(false),[categoryOrder,setCategoryOrder]=useState(cats.slice(1));
- useEffect(()=>{try{setCart(JSON.parse(localStorage.getItem('cart')||'[]'));setFav(JSON.parse(localStorage.getItem('fav')||'[]'));setMemberLoggedIn(localStorage.getItem('member-session')==='active');const saved=JSON.parse(localStorage.getItem('category-order')||'null');if(Array.isArray(saved)&&saved.length===cats.length-1)setCategoryOrder(saved)}catch{}},[]);useEffect(()=>{localStorage.setItem('cart',JSON.stringify(cart));localStorage.setItem('fav',JSON.stringify(fav));localStorage.setItem('category-order',JSON.stringify(categoryOrder));localStorage.setItem('member-session',memberLoggedIn?'active':'')},[cart,fav,categoryOrder,memberLoggedIn]);
- const go=(x:string)=>{setPage(x);scrollTo({top:0,behavior:'smooth'})},add=(id:number)=>{setCart(x=>[...x,id]);setToast('已加入購物車');setTimeout(()=>setToast(''),1500)},heart=(id:number)=>setFav(x=>x.includes(id)?x.filter(i=>i!==id):[...x,id]),detail=(p:P)=>{setPicked(p);go('detail')};
- const filtered=useMemo(()=>ps.filter(p=>(cat==='全部商品'||p.cat===cat)&&(!maker||p.fit.some(x=>x.includes(maker))||p.fit[0]==='全車種')&&(!model||p.fit.some(x=>x.includes(model))||p.fit[0]==='全車種')).sort((a,b)=>Number(Boolean(b.image))-Number(Boolean(a.image))),[cat,maker,model]);const cp=cart.map(id=>ps.find(p=>p.id===id)!).filter(Boolean),total=cp.reduce((s,p)=>s+p.price,0);
- if(page==='admin')return <Admin tab={tab} setTab={setTab} back={()=>go('home')} categoryOrder={categoryOrder} setCategoryOrder={setCategoryOrder}/>;
- return <div><div className="ticker"><span>義大利性能部品・台灣專業選品</span><span>滿 NT$3,000 免運費</span><span>DEMO 展示站｜所有交易皆為模擬</span></div><header><button className="logo" onClick={()=>go('home')}><img src="/media/yehda-logo.png" alt="燁達機車精品 YADA Motorcycle Boutique"/></button><nav><button onClick={()=>go('products')}>所有商品</button><button onClick={()=>go('brands')}>品牌專區</button><button onClick={()=>{setCat('安全帽');go('products')}}>安全帽</button><button onClick={()=>document.querySelector('#fit')?.scrollIntoView()}>依車種找部品</button></nav><div className="tools"><button>⌕</button><button onClick={()=>go('favorites')}>♡<i>{fav.length}</i></button><button onClick={()=>go('cart')}>袋<i>{cart.length}</i></button><button className="memberBtn border border-[#474952] px-3 py-2 text-[11px]" aria-label={memberLoggedIn?'前往會員中心':'會員登入或註冊'} onClick={()=>go(memberLoggedIn?'account':'login')}>人 <span className="memberLabel">{memberLoggedIn?'王小明':'登入／註冊'}</span></button><button className="adminBtn" onClick={()=>go('admin')}>後台展示 ↗</button></div></header><main>
- {page==='home'&&<><section className="hero"><div className="heroCopy"><p className="eyebrow">RIDE BEYOND LIMITS · 2026</p><h1>為街道而生<br/><em>為性能而戰</em></h1><p>從義大利競技血統，到日常騎乘的每個細節。<br/>嚴選真正值得你信賴的機車精品。</p><button className="primary" onClick={()=>go('products')}>探索所有部品　→</button><button className="ghost" onClick={()=>document.querySelector('#fit')?.scrollIntoView()}>依愛車精準選購</button></div><RideCarousel/></section>
- <section className="fit" id="fit"><div><p className="eyebrow purple">FIND YOUR PARTS</p><h2>選擇你的愛車</h2><p>只顯示真正適合你的改裝部品</p></div><div className="fitFields"><label>廠牌<select value={maker} onChange={e=>{setMaker(e.target.value);setModel('')}}><option value="">選擇廠牌</option>{Object.keys(vehicleModels).map(x=><option key={x}>{x}</option>)}</select></label><label>車系 / 車款<select disabled={!maker} value={model} onChange={e=>setModel(e.target.value)}><option value="">選擇車款</option>{(vehicleModels[maker]||[]).map(x=><option key={x}>{x}</option>)}</select></label><button onClick={()=>go('products')}>搜尋適用部品 →</button></div></section>
- <FeaturedCategories order={categoryOrder} fav={fav} heart={heart} detail={detail} add={add} choose={c=>{setCat(c);go('products')}}/><section className="categories"><Title kicker="SHOP BY CATEGORY" title="從你的下一項升級開始"/ ><div className="catGrid">{categoryOrder.map((c,i)=><button key={c} onClick={()=>{setCat(c);go('products')}}><img src={catImages[cats.slice(1).indexOf(c)]} alt=""/><span>{String(i+1).padStart(2,'0')}</span><b>{c}</b><small>PERFORMANCE PARTS</small><i>↗</i></button>)}</div></section><BrandShowcase go={()=>go('brands')}/><FAQ/></>}
- {page==='products'&&<section className="catalog"><PageTitle over="SHOP ALL" title={cat} sub={`${maker||'全車種'} ${model} ・ 共 ${filtered.length} 件符合商品`}/><div className="catalogBody"><aside><b>商品分類</b>{cats.map(c=><button className={cat===c?'active':''} onClick={()=>setCat(c)} key={c}>{c}<span>›</span></button>)}<hr/><b>品牌</b>{['POLINI','MALOSSI','BMC','SHOEI'].map(x=><label key={x}><input type="checkbox"/> {x}</label>)}</aside><div><div className="sort"><span>顯示 {filtered.length} 項商品 · 實品照片優先推薦</span><select><option>實品推薦排序</option><option>最新上架</option></select></div><Grid items={filtered} fav={fav} heart={heart} detail={detail} add={add}/></div></div></section>}
- {page==='detail'&&<section className="detail"><button className="back" onClick={()=>go('products')}>← 返回商品列表</button><Visual p={picked} big/><div className="detailInfo"><p className="eyebrow purple">{picked.brand} · {picked.cat}</p><h1>{picked.name}</h1><div className="stars">★★★★★ <span>4.9（28 則評價）</span></div><div className={`price ${!picked.price?'pricePending':''}`}>{nt(picked.price)}</div><p>義大利性能精品展示商品，實際規格、售價與庫存請以業主正式上架資料為準，購買前可先確認愛車適配。</p><hr/><label>規格<select><option>標準規格</option>{picked.cat==='握把'&&<option>黑色／白色</option>}</select></label><div className="buy"><button className="primary" disabled={!picked.price} onClick={()=>picked.price&&add(picked.id)}>{picked.price?'加入購物車':'售價確認後開放購買'}</button><button onClick={()=>heart(picked.id)}>{fav.includes(picked.id)?'♥ 已收藏':'♡ 收藏'}</button></div><div className="fitNote"><b>✓ 適用車種</b>{picked.fit.map(x=><span key={x}>{x}</span>)}</div><ul><li>原裝進口／展示資料待業主確認</li><li>7 日鑑賞期（未安裝商品）</li><li>提供代安裝服務，請於結帳完成後加入官方 LINE 洽詢</li></ul></div></section>}
- {page==='brands'&&<section className="brandPage"><PageTitle over="AUTHENTIC PERFORMANCE" title="品牌專區" sub="燁達嚴選全球頂級改裝品牌，把賽道科技帶進日常騎乘。"/>{['POLINI','MALOSSI'].map((b,i)=><article className={i?'redBrand':''} key={b}><div><span>MADE IN ITALY</span><h2>{b}</h2><p>{i?'源自義大利波隆那，以極致性能與大膽紅色基因聞名。':'創立於 1945 年，跨越三個世代的義大利傳動工藝。'}</p><button onClick={()=>go('products')}>探索 {b} 商品 →</button></div><b>{b[0]}</b></article>)}</section>}
- {page==='favorites'&&<section className="catalog single"><PageTitle over="YOUR PICKS" title="我的收藏" sub="你精選的性能升級清單"/>{fav.length?<Grid items={ps.filter(p=>fav.includes(p.id))} fav={fav} heart={heart} detail={detail} add={add}/>:<Empty text="還沒有收藏商品" go={()=>go('products')}/>}</section>}
- {page==='login'&&<MemberAuthV2 mode="login" switchMode={()=>go('register')} success={()=>{setMemberLoggedIn(true);setToast('登入成功');go('account')}}/>}
- {page==='register'&&<MemberAuthV2 mode="register" switchMode={()=>go('login')} success={()=>{setMemberLoggedIn(true);setToast('註冊完成，已獲得 100 點迎新點數');go('account')}}/>}
- {page==='account'&&<MemberCenter logout={()=>{setMemberLoggedIn(false);setToast('已登出會員');go('home')}} shop={()=>go('products')}/>}
- {page==='cart'&&<CartV2 items={cp} total={total} remove={id=>setCart(x=>x.filter(n=>n!==id))} increase={id=>setCart(x=>[...x,id])} decrease={id=>setCart(x=>{const index=x.indexOf(id);return index<0?x:x.filter((_,n)=>n!==index)})} next={()=>{setStep(1);go('checkout')}} shop={()=>go('products')}/>} {page==='checkout'&&<CheckoutFlow step={step} setStep={setStep} items={cp} total={total} finish={()=>{setCart([]);go('home')}}/>}
- </main><footer><div><b>燁達</b><span>YEHDA MOTO PERFORMANCE</span><p>專業機車改裝・精品部品<br/>把每一次騎乘，升級成你要的樣子。</p></div><div><b>快速連結</b><a>所有商品</a><a>品牌專區</a><a>車種專區</a></div><div><b>顧客服務</b><a href="#faq">常見問題 FAQ</a><a>配送說明</a><a>購物須知</a><a>退換貨政策</a></div><div><b>營業資訊</b><p>營業時間 09:30–17:00<br/>週六、週日可來電預約<br/>236 新北市土城區裕生里<br/>中華路一段 70 巷 5 號</p></div><small>© 2026 燁達機車精品｜本網站為提案 Demo，所有內容與交易皆為模擬。</small></footer><nav className={`mobileNav ${page==='checkout'?'checkoutHidden':''}`} aria-label="手機版快速導覽"><button className={page==='home'?'active':''} onClick={()=>go('home')}><i>⌂</i><span>首頁</span></button><button className={page==='products'?'active':''} onClick={()=>go('products')}><i>▦</i><span>商品</span></button><button onClick={()=>{go('home');setTimeout(()=>document.querySelector('#fit')?.scrollIntoView(),80)}}><i>⌖</i><span>選車</span></button><button className={['login','register','account'].includes(page)?'active':''} onClick={()=>go(memberLoggedIn?'account':'login')}><i>人</i><span>會員</span></button><button className={page==='cart'?'active':''} onClick={()=>go('cart')}><i>袋</i><span>購物袋</span><em>{cart.length}</em></button></nav>{toast&&<div className="toast">✓ {toast}</div>}</div>}
-function CartV2({items,total,remove,increase,decrease,next,shop}:{items:P[],total:number,remove:(id:number)=>void,increase:(id:number)=>void,decrease:(id:number)=>void,next:()=>void,shop:()=>void}){const grouped=Object.values(items.reduce<Record<number,{p:P,qty:number}>>((acc,p)=>{acc[p.id]??={p,qty:0};acc[p.id].qty++;return acc},{}));const shipping=total>=3000?0:120;const remain=Math.max(0,3000-total);return <section className="cartV2 mx-auto max-w-[1180px] px-4 py-10 md:py-16"><div className="flex flex-col gap-4 border-b border-zinc-300 pb-7 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow purple">YOUR BAG</p><h1 className="mt-3 text-4xl font-black md:text-5xl">購物車</h1><p className="mt-2 text-xs text-zinc-500">{grouped.length} 種商品 · 共 {items.length} 件</p></div><button onClick={shop} className="min-h-11 border border-zinc-300 bg-white px-5 text-xs">← 繼續選購</button></div>{!items.length?<div className="mt-7"><Empty text="購物車目前是空的" go={shop}/></div>:<div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]"><div className="overflow-hidden border border-zinc-200 bg-white"><div className="hidden grid-cols-[110px_minmax(0,1fr)_110px_120px] gap-5 bg-[#17181d] px-5 py-3 text-[9px] font-bold tracking-wider text-zinc-400 md:grid"><span>商品</span><span>商品資訊</span><span>數量</span><span className="text-right">小計</span></div>{grouped.map(({p,qty})=><article key={p.id} className="grid grid-cols-[86px_minmax(0,1fr)] gap-4 border-b border-zinc-100 p-4 last:border-b-0 md:grid-cols-[110px_minmax(0,1fr)_110px_120px] md:items-center md:gap-5 md:p-5"><Visual p={p}/><div className="min-w-0"><small className="text-[9px] tracking-wider text-zinc-400">{p.brand} · {p.cat}</small><h2 className="mt-2 text-sm font-bold leading-5 md:text-base">{p.name}</h2><p className="mt-1 text-[10px] text-zinc-500">標準規格</p><b className="mt-3 block text-xs md:hidden">{nt(p.price)}</b><button onClick={()=>remove(p.id)} className="mt-3 border-0 bg-transparent p-0 text-[10px] text-zinc-400 underline">移除商品</button></div><div className="col-start-2 flex w-max items-center border border-zinc-300 md:col-start-auto"><button aria-label={`減少 ${p.name} 數量`} onClick={()=>decrease(p.id)} className="h-9 w-9 border-0 bg-white text-lg">−</button><span className="grid h-9 min-w-9 place-items-center border-x border-zinc-300 text-xs font-bold">{qty}</span><button aria-label={`增加 ${p.name} 數量`} onClick={()=>increase(p.id)} className="h-9 w-9 border-0 bg-white text-lg">＋</button></div><b className="col-start-2 text-right text-sm md:col-start-auto md:text-base">{nt(p.price*qty)}</b></article>)}</div><aside className="border border-zinc-200 bg-white p-5 shadow-sm md:p-7"><h2 className="text-xl font-bold">訂單摘要</h2><div className="mt-5 bg-[#f4f2ff] p-4"><div className="flex justify-between text-[10px]"><span>{remain?`再消費 ${nt(remain)} 即享免運`:'已達免運門檻'}</span><b>{Math.min(100,Math.round(total/3000*100))}%</b></div><div className="mt-2 h-1.5 bg-white"><i className="block h-full bg-gradient-to-r from-[#ff7900] to-[#654cff]" style={{width:`${Math.min(100,total/3000*100)}%`}}/></div></div><div className="mt-5 flex"><input className="min-w-0 flex-1 border border-zinc-300 px-3 py-3 text-xs" placeholder="優惠代碼"/><button className="border border-l-0 border-zinc-300 bg-zinc-100 px-4 text-xs font-bold">套用</button></div><div className="mt-5 space-y-3 border-b border-zinc-200 pb-5 text-xs"><p className="flex justify-between"><span className="text-zinc-500">商品小計</span><b>{nt(total)}</b></p><p className="flex justify-between"><span className="text-zinc-500">運費</span><b>{shipping?'結帳時依配送方式計算':'免運'}</b></p></div><div className="flex items-end justify-between py-5"><span className="text-sm font-bold">預估總計</span><b className="text-2xl">{nt(total+shipping)}</b></div><button onClick={next} className="min-h-14 w-full bg-gradient-to-r from-[#563adc] to-[#7656ff] px-5 text-sm font-bold text-white">前往安全結帳　→</button><div className="mt-5 grid grid-cols-3 gap-2 text-center text-[9px] text-zinc-500"><span>🔒<b className="mt-1 block">安全結帳</b></span><span>↩<b className="mt-1 block">七日鑑賞</b></span><span>✓<b className="mt-1 block">正品保證</b></span></div><p className="mt-5 border-t border-zinc-100 pt-4 text-center text-[9px] leading-5 text-zinc-400">本頁為 Demo，不會建立真實訂單或扣款。</p></aside></div>}</section>}
-function MemberAuthV2({mode,switchMode,success}:{mode:'login'|'register',switchMode:()=>void,success:()=>void}){const register=mode==='register',[showPassword,setShowPassword]=useState(false),[password,setPassword]=useState(''),[error,setError]=useState('');const submit=(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();setError('');const data=new FormData(e.currentTarget);if(register&&data.get('password')!==data.get('confirm')){setError('兩次輸入的密碼不一致，請重新確認。');return}success()};return <section className="authV2 min-h-[680px] bg-[#0d0e12] px-4 py-8 text-white md:py-16"><div className="mx-auto grid max-w-[1040px] overflow-hidden border border-white/10 bg-[#17191f] shadow-2xl lg:grid-cols-[.85fr_1.15fr]"><aside className="relative overflow-hidden bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-6 sm:p-8 lg:p-12"><div className="absolute -right-20 -top-20 h-64 w-64 rounded-full border-[55px] border-white/5"/><p className="relative text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YEHDA RIDERS CLUB</p><h1 className="relative mt-4 text-3xl font-black leading-tight sm:text-4xl">登入騎士身份<br/>累積每次升級</h1><p className="relative mt-4 text-xs leading-6 text-zinc-300">訂單、收藏、愛車與會員點數，一個帳號集中管理。</p><div className="relative mt-7 grid grid-cols-3 gap-2 text-center text-[9px]"><span className="border border-white/15 p-3">點數<br/><b>回饋</b></span><span className="border border-white/15 p-3">訂單<br/><b>追蹤</b></span><span className="border border-white/15 p-3">愛車<br/><b>管理</b></span></div></aside><form onSubmit={submit} className="min-w-0 bg-white p-5 text-[#17181d] sm:p-8 lg:p-12"><div className="grid grid-cols-2 border border-zinc-200 p-1 text-xs"><button type="button" onClick={()=>mode!=='login'&&switchMode()} className={`min-h-10 border-0 ${!register?'bg-[#17181d] font-bold text-white':'bg-transparent text-zinc-500'}`}>會員登入</button><button type="button" onClick={()=>mode!=='register'&&switchMode()} className={`min-h-10 border-0 ${register?'bg-[#17181d] font-bold text-white':'bg-transparent text-zinc-500'}`}>免費註冊</button></div><div className="mt-7"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">{register?'CREATE ACCOUNT':'WELCOME BACK'}</p><h2 className="mt-2 text-3xl font-black">{register?'建立會員帳號':'歡迎回來'}</h2><p className="mt-2 text-xs leading-5 text-zinc-500">{register?'完成註冊即可獲得 100 點迎新點數。':'使用手機號碼或 Email 登入會員中心。'}</p></div>{error&&<div role="alert" className="mt-5 border-l-4 border-red-500 bg-red-50 p-3 text-xs text-red-700">{error}</div>}<div className={`mt-6 grid gap-4 ${register?'sm:grid-cols-2':''}`}>{register&&<label className="text-xs font-bold">姓名<input name="name" autoComplete="name" required className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal" placeholder="請輸入真實姓名"/></label>}<label className="text-xs font-bold">{register?'手機號碼':'手機號碼或電子信箱'}<input name="identifier" autoComplete={register?'tel':'username'} required inputMode={register?'tel':'text'} pattern={register?'09[0-9]{8}':undefined} className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal" placeholder={register?'09 開頭的 10 位數手機':'0912345678 / demo@yehda.tw'}/>{register&&<small className="mt-1 block font-normal text-zinc-400">作為訂單及取貨聯絡使用</small>}</label>{register&&<label className="text-xs font-bold sm:col-span-2">電子信箱<input name="email" autoComplete="email" required type="email" className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal" placeholder="demo@yehda.tw"/></label>}<label className={`text-xs font-bold ${register?'sm:col-span-2':''}`}>密碼<div className="relative mt-2"><input name="password" autoComplete={register?'new-password':'current-password'} required minLength={6} type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} className="min-h-12 w-full border border-zinc-300 px-4 pr-16 font-normal" placeholder="至少 6 個字元"/><button type="button" onClick={()=>setShowPassword(x=>!x)} className="absolute inset-y-0 right-0 w-14 border-0 bg-transparent text-[10px] text-[#654cff]">{showPassword?'隱藏':'顯示'}</button></div>{register&&<div className="mt-2 flex gap-1">{[1,2,3,4].map((x,i)=><i key={x} className={`h-1 flex-1 ${password.length>i*2?'bg-[#654cff]':'bg-zinc-200'}`}/>)}</div>}</label>{register&&<label className="text-xs font-bold sm:col-span-2">確認密碼<input name="confirm" autoComplete="new-password" required minLength={6} type={showPassword?'text':'password'} className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal" placeholder="請再次輸入密碼"/></label>}{register?<label className="flex items-start gap-3 text-[10px] leading-5 text-zinc-500 sm:col-span-2"><input required type="checkbox" className="mt-1 h-4 w-4 flex-none"/>我已閱讀並同意會員條款與隱私權政策（Demo）</label>:<div className="flex flex-wrap items-center justify-between gap-3 text-[10px] text-zinc-500"><label><input type="checkbox"/> 記住我的登入狀態</label><button type="button" className="border-0 bg-transparent text-[#654cff]">忘記密碼？</button></div>}<button type="submit" className={`min-h-13 bg-gradient-to-r from-[#563adc] to-[#7656ff] px-5 text-sm font-bold text-white ${register?'sm:col-span-2':''}`}>{register?'完成註冊並領取 100 點':'登入會員中心'}　→</button></div><p className="mt-6 border-t border-zinc-200 pt-5 text-center text-[9px] leading-5 text-zinc-400">展示用會員流程，不會傳送或儲存真實密碼。</p></form></div></section>}
-function MemberAuth({mode,switchMode,success}:{mode:'login'|'register',switchMode:()=>void,success:()=>void}){const register=mode==='register';return <section className="min-h-[720px] bg-[#101116] px-4 py-16 text-white"><div className="mx-auto grid max-w-[980px] overflow-hidden border border-[#30323a] bg-[#17191f] shadow-2xl md:grid-cols-[.9fr_1.1fr]"><aside className="relative overflow-hidden bg-gradient-to-br from-[#583be0] via-[#2b225b] to-[#101116] p-8 md:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YEHDA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">登入騎士身份<br/>累積每次升級</h1><p className="mt-5 text-xs leading-7 text-zinc-300">查看訂單、收藏商品並累積會員點數。<br/>每消費 NT$100 可獲得 1 點。</p><div className="mt-10 grid grid-cols-3 gap-2 text-center text-[10px]"><span className="border border-white/20 p-3">會員專屬<br/><b>點數回饋</b></span><span className="border border-white/20 p-3">快速查看<br/><b>訂單進度</b></span><span className="border border-white/20 p-3">儲存你的<br/><b>愛車資料</b></span></div></aside><form className="bg-white p-7 text-[#17181d] md:p-12" onSubmit={e=>{e.preventDefault();success()}}><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">{register?'CREATE ACCOUNT':'MEMBER LOGIN'}</p><h2 className="mt-3 text-3xl font-black">{register?'建立會員帳號':'會員登入'}</h2><p className="mt-2 text-xs text-zinc-500">{register?'加入即可獲得 100 點迎新點數':'歡迎回來，繼續你的性能升級旅程。'}</p><div className="mt-8 grid gap-4">{register&&<label className="text-xs font-bold">姓名<input required className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal" placeholder="王小明"/></label>}<label className="text-xs font-bold">{register?'手機號碼':'手機號碼或電子信箱'}<input required className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal" placeholder={register?'0912345678':'0912345678 / demo@yehda.tw'}/></label>{register&&<label className="text-xs font-bold">電子信箱<input required type="email" className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal" placeholder="demo@yehda.tw"/></label>}<label className="text-xs font-bold">密碼<input required minLength={6} type="password" className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal" placeholder="至少 6 個字元"/></label>{register&&<label className="text-xs font-bold">確認密碼<input required minLength={6} type="password" className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal" placeholder="再次輸入密碼"/></label>}{register?<label className="flex items-start gap-2 text-[10px] leading-5 text-zinc-500"><input required type="checkbox" className="mt-1"/>我已閱讀並同意會員條款與隱私權政策（Demo）</label>:<div className="flex justify-between text-[10px] text-zinc-500"><label><input type="checkbox"/> 記住我的登入狀態</label><button type="button" className="border-0 bg-transparent text-[#654cff]">忘記密碼？</button></div>}<button type="submit" className="mt-2 min-h-12 bg-gradient-to-r from-[#563adc] to-[#7455ff] px-5 font-bold text-white">{register?'立即註冊並領取 100 點':'登入會員中心'}　→</button></div><div className="mt-7 border-t border-zinc-200 pt-6 text-center text-xs text-zinc-500">{register?'已經是會員？':'還不是會員？'} <button type="button" onClick={switchMode} className="border-0 bg-transparent font-bold text-[#654cff]">{register?'返回登入':'免費註冊'}</button></div><p className="mt-5 text-center text-[9px] text-zinc-400">本頁為展示用會員流程，不會傳送或儲存真實密碼。</p></form></div></section>}
-function MemberCenter({logout,shop}:{logout:()=>void,shop:()=>void}){return <section className="mx-auto max-w-[1180px] px-4 py-14 md:py-20"><div className="flex flex-col gap-5 border-b border-zinc-300 pb-8 md:flex-row md:items-end md:justify-between"><div><p className="eyebrow purple">RIDERS CLUB</p><h1 className="mt-4 text-4xl font-black">王小明，你好</h1><p className="mt-2 text-sm text-zinc-500">YEHDA 銀牌會員 · 會員編號 YD-M0001</p></div><button onClick={logout} className="border border-zinc-300 bg-white px-5 py-3 text-xs">登出會員</button></div><div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="grid gap-4 sm:grid-cols-3"><article className="bg-gradient-to-br from-[#17181d] to-[#302567] p-6 text-white sm:col-span-2"><span className="text-[9px] tracking-[.2em] text-[#ff9a3d]">AVAILABLE POINTS</span><b className="mt-4 block text-5xl">1,280 <small className="text-sm">點</small></b><p className="mt-5 text-xs text-zinc-300">100 點可折抵 NT$100；單筆最高折抵訂單金額 20%。</p><div className="mt-6 h-1.5 bg-white/15"><i className="block h-full w-[64%] bg-gradient-to-r from-[#ff7900] to-[#7657ff]"/></div><small className="mt-2 block text-[9px] text-zinc-400">再累積 720 點升級金牌會員</small></article><article className="border border-zinc-200 bg-white p-6"><span className="text-[9px] tracking-wider text-zinc-400">今年消費</span><b className="mt-4 block text-2xl">NT$ 28,600</b><span className="mt-8 block text-[9px] text-zinc-400">完成訂單</span><b className="mt-2 block text-xl">6 筆</b></article></div><aside className="border border-zinc-200 bg-white p-6"><h2 className="text-lg font-bold">我的愛車</h2><div className="mt-5 border-l-4 border-[#654cff] bg-zinc-50 p-4"><b>YAMAHA FORCE 2.0</b><span className="mt-1 block text-xs text-zinc-500">2023 · 日常／性能改裝</span></div><button className="mt-4 w-full border border-zinc-300 bg-white px-4 py-3 text-xs">管理愛車資料</button></aside></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="border border-zinc-200 bg-white p-6"><div className="flex items-center justify-between"><h2 className="text-lg font-bold">最近訂單</h2><button className="border-0 bg-transparent text-xs text-[#654cff]">查看全部 →</button></div><div className="mt-4 divide-y divide-zinc-100 text-xs">{[['#YD0186','處理中','NT$ 6,980'],['#YD0172','已完成','NT$ 3,280']].map(x=><div key={x[0]} className="grid grid-cols-3 gap-2 py-4"><b>{x[0]}</b><span className="text-[#654cff]">{x[1]}</span><b className="text-right">{x[2]}</b></div>)}</div><button onClick={shop} className="mt-3 w-full bg-[#17181d] px-4 py-3 text-xs font-bold text-white">繼續選購商品</button></section><section className="border border-zinc-200 bg-white p-6"><h2 className="text-lg font-bold">點數紀錄</h2><div className="mt-4 divide-y divide-zinc-100 text-xs">{[['購買訂單 #YD0186','2026/08/28','+70'],['註冊迎新點數','2026/08/12','+100'],['訂單折抵 #YD0172','2026/08/01','−200']].map(x=><div key={x[0]} className="grid grid-cols-[1fr_auto] gap-3 py-4"><span><b className="block">{x[0]}</b><small className="text-zinc-400">{x[1]}</small></span><b className={x[2].startsWith('+')?'text-emerald-600':'text-orange-600'}>{x[2]} 點</b></div>)}</div></section></div></section>}
-function BrandShowcase({go}:{go:()=>void}){const brands=[{name:'POLINI',img:'/media/polini.jpg',sub:'ITALIAN RACING PARTS · SINCE 1945',className:'polini'},{name:'MALOSSI',img:'/media/malossi.jpg',sub:'RACING PERFORMANCE · MADE IN ITALY',className:'malossi'}];return <section className="brandExperience"><div className="brandExperienceTitle"><p className="eyebrow purple">OFFICIAL DISTRIBUTION</p><h2>義大利性能基因</h2><p>移動滑鼠，擦開品牌背後的競技靈魂</p></div><div className="brandRevealGrid">{brands.map(b=><button key={b.name} className={`brandReveal ${b.className}`} onClick={go} onPointerMove={e=>{const r=e.currentTarget.getBoundingClientRect();e.currentTarget.style.setProperty('--mx',`${e.clientX-r.left}px`);e.currentTarget.style.setProperty('--my',`${e.clientY-r.top}px`)}}><img src={b.img} alt={`${b.name} 品牌標誌`}/><div className="brandCover"><span>AUTHORIZED BRAND</span><b>{b.name}</b><small>{b.sub}</small><i>MOVE TO REVEAL　↗</i></div><div className="revealRing"/></button>)}</div></section>}
-function FAQ(){
- const rows=[['營業時間是幾點？','營業時間為每日 09:30–17:00。'],['週六、週日可以預約嗎？','可以，請先來電預約，我們會協助安排服務時間。'],['自帶商品的安裝工資如何計算？','安裝工資會依商品與車種判斷，請加 LINE 提供商品及車型資訊後詢問。'],['現場刷卡是否需要手續費？','現場刷卡需加收 3% 手續費。']];
- return <section id="faq" className="faqSection">
-  <div className="faqLayout">
-   <div className="faqIntro"><p className="eyebrow">HELP CENTER</p><h2>常見問題 FAQ</h2><p>在出發前，先找到你需要的答案。<br/>其他問題歡迎來電或透過 LINE 詢問。</p></div>
-   <div className="faqList">{rows.map((r,i)=><details key={r[0]}><summary><span>0{i+1}</span><b>{r[0]}</b><i>＋</i></summary><p>{r[1]}</p></details>)}</div>
-  </div>
-  <div className="faqMeta"><span><b>營業時間</b>09:30–17:00</span><span><b>週六、週日</b>來電預約</span><span><b>營業地址</b>236 新北市土城區裕生里中華路一段 70 巷 5 號</span></div>
- </section>
+
+function CartIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="navIcon">
+      <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 8H7" />
+      <circle cx="10" cy="20" r="1.3" />
+      <circle cx="18" cy="20" r="1.3" />
+    </svg>
+  );
 }
-const rides=[
- {src:'/media/ride-01.jpg',label:'STREET ATTACK',note:'每一個彎，都值得更好的操控'},
- {src:'/media/ride-02.jpg',label:'TRACK FOCUSED',note:'讓街道性能擁有賽道靈魂'},
- {src:'/media/ride-03.jpg',label:'PURE MOTION',note:'速度與機械美學的交會'},
- {src:'/media/ride-04.jpg',label:'RIDE BEYOND',note:'專業選品，陪你突破每一段路'}
+
+function UserIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="navIcon">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
+    </svg>
+  );
+}
+
+function WishPage({
+  back,
+  tx,
+}: {
+  back: () => void;
+  tx: (zh: string, en: string) => string;
+}) {
+  return (
+    <section className="wishPage">
+      <button className="wishBack" onClick={back}>
+        ← {tx("返回首頁", "BACK TO HOME")}
+      </button>
+      <div className="wishHero">
+        <div className="wishCopy">
+          <p className="eyebrow">PRE-ORDER & WISH LIST</p>
+          <h1>{tx("想找的部品，交給燁達。", "LET YADA FIND YOUR NEXT PART.")}</h1>
+          <p>
+            {tx(
+              "找不到現貨、想預購海外精品，或希望我們引進指定商品？準備好簡單資訊，直接透過官方 LINE 與我們聯繫。",
+              "Looking for an overseas part, a pre-order, or something you want us to source? Send the details directly through our official LINE account.",
+            )}
+          </p>
+          <a className="lineCta" href="https://lin.ee/SdFwbiM" target="_blank" rel="noopener noreferrer">
+            <span>LINE</span>
+            {tx("加入官方 LINE 開始詢問", "CONTACT US ON LINE")} →
+          </a>
+          <small>{tx("將開啟 LINE 官方帳號", "Opens our official LINE account")}</small>
+        </div>
+        <div className="wishVisual" aria-hidden="true">
+          <img src="/media/ride-04.jpg" alt="" />
+          <div><span>YADA MOTORCYCLE</span><b>WISH<br />YOUR<br />RIDE.</b></div>
+        </div>
+      </div>
+      <div className="wishSteps">
+        <article><span>01</span><b>{tx("選擇需求", "CHOOSE A REQUEST")}</b><p>{tx("告訴我們是預購指定商品，或許願引進新品。", "Tell us whether this is a pre-order or a sourcing request.")}</p></article>
+        <article><span>02</span><b>{tx("準備資料", "PREPARE THE DETAILS")}</b><p>{tx("提供商品名稱、愛車車種與年份，以及照片或網址。", "Include the product, motorcycle model and year, plus a photo or link.")}</p></article>
+        <article><span>03</span><b>{tx("LINE 後續確認", "CONFIRM ON LINE")}</b><p>{tx("由店家協助確認規格、價格、交期與後續流程。", "We will confirm compatibility, price, lead time and next steps.")}</p></article>
+      </div>
+      <div className="wishChecklist">
+        <div><p className="eyebrow">MESSAGE CHECKLIST</p><h2>{tx("傳訊息前，準備這些就好", "THREE THINGS TO SEND")}</h2></div>
+        <ul>
+          <li>✓ {tx("商品名稱或品牌", "Product name or brand")}</li>
+          <li>✓ {tx("機車車種與年份", "Motorcycle model and year")}</li>
+          <li>✓ {tx("參考照片或商品網址", "Reference photo or product link")}</li>
+        </ul>
+        <a href="https://lin.ee/SdFwbiM" target="_blank" rel="noopener noreferrer">{tx("前往官方 LINE", "OPEN OFFICIAL LINE")} →</a>
+      </div>
+    </section>
+  );
+}
+
+function OwnerStoryVideo({ title }: { title: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const pause = () =>
+      frameRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+        "https://www.youtube-nocookie.com",
+      );
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.2) pause();
+      },
+      { threshold: [0, 0.2] },
+    );
+    const frame = frameRef.current;
+    if (frame) observer.observe(frame);
+    const onVisibilityChange = () => {
+      if (document.hidden) pause();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+  return (
+    <iframe
+      ref={frameRef}
+      src="https://www.youtube-nocookie.com/embed/oBSOYbLFttc?start=679&rel=0&enablejsapi=1"
+      title={title}
+      loading="lazy"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerPolicy="strict-origin-when-cross-origin"
+      allowFullScreen
+    />
+  );
+}
+const ps: P[] = [
+  {
+    id: 1,
+    name: "NXR2 街頭全罩安全帽",
+    brand: "SHOEI",
+    cat: "安全帽",
+    price: 16800,
+    color: "violet",
+    fit: ["全車種"],
+  },
+  {
+    id: 2,
+    name: "HI-SPEED 傳動套件",
+    brand: "POLINI",
+    cat: "傳動",
+    price: 6980,
+    color: "blue",
+    fit: ["YAMAHA 勁戰六代 2024", "YAMAHA FORCE 2.0 2023"],
+  },
+  {
+    id: 3,
+    name: "RS24 後避震器",
+    brand: "MALOSSI",
+    cat: "前後避震",
+    price: 12800,
+    color: "red",
+    fit: ["SYM JET SL+ 2024", "SYM DRG 2023"],
+  },
+  {
+    id: 4,
+    name: "浮動浪花碟盤 260mm",
+    brand: "POLINI",
+    cat: "碟盤",
+    price: 4200,
+    color: "silver",
+    fit: ["YAMAHA 勁戰六代 2024"],
+  },
+  {
+    id: 5,
+    name: "競技陶瓷煞車皮",
+    brand: "MALOSSI",
+    cat: "煞車皮",
+    price: 1680,
+    color: "yellow",
+    fit: ["SYM JET SL+ 2024", "SYM MMBCU 2024"],
+  },
+  {
+    id: 6,
+    name: "AERO 短版燻黑風鏡",
+    brand: "YEHDA",
+    cat: "風鏡",
+    price: 2380,
+    color: "smoke",
+    fit: ["YAMAHA FORCE 2.0 2023", "SYM DRG 2023"],
+  },
+  {
+    id: 7,
+    name: "GT-Air 3 旅行全罩安全帽",
+    brand: "SHOEI",
+    cat: "安全帽",
+    price: 19800,
+    color: "blue",
+    fit: ["全車種"],
+  },
+  {
+    id: 8,
+    name: "Glamster 復古全罩安全帽",
+    brand: "SHOEI",
+    cat: "安全帽",
+    price: 15800,
+    color: "silver",
+    fit: ["全車種"],
+  },
+  {
+    id: 9,
+    name: "EX-ZERO 越野復古安全帽",
+    brand: "SHOEI",
+    cat: "安全帽",
+    price: 14600,
+    color: "yellow",
+    fit: ["全車種"],
+  },
+  {
+    id: 10,
+    name: "MAXI SPEED 普利盤組",
+    brand: "MALOSSI",
+    cat: "傳動",
+    price: 7200,
+    color: "red",
+    fit: ["YAMAHA 勁戰六代", "SYM JET SL+ 158"],
+  },
+  {
+    id: 11,
+    name: "X-SPECIAL 強化傳動皮帶",
+    brand: "POLINI",
+    cat: "傳動",
+    price: 3280,
+    color: "blue",
+    fit: ["YAMAHA FORCE 2.0", "KYMCO KRV MOTO 180"],
+  },
+  {
+    id: 12,
+    name: "DELTA 可調競技離合器",
+    brand: "MALOSSI",
+    cat: "傳動",
+    price: 8600,
+    color: "yellow",
+    fit: ["SYM DRGBT", "YAMAHA NMAX 155"],
+  },
+  {
+    id: 13,
+    name: "FORK RACING 前叉套件",
+    brand: "POLINI",
+    cat: "前後避震",
+    price: 9800,
+    color: "blue",
+    fit: ["YAMAHA 勁戰六代", "SYM JET SL+ 158"],
+  },
+  {
+    id: 14,
+    name: "RS24 雙槍後避震器",
+    brand: "MALOSSI",
+    cat: "前後避震",
+    price: 14800,
+    color: "red",
+    fit: ["KYMCO Racing S 150", "SYM 迪爵 125"],
+  },
+  {
+    id: 15,
+    name: "街道版預載可調避震器",
+    brand: "YEHDA",
+    cat: "前後避震",
+    price: 7880,
+    color: "violet",
+    fit: ["YAMAHA FORCE 2.0", "SYM MMBCU"],
+  },
+  {
+    id: 16,
+    name: "競技浮動碟盤 220mm",
+    brand: "POLINI",
+    cat: "碟盤",
+    price: 3680,
+    color: "silver",
+    fit: ["SYM JET SL+ 158", "YAMAHA 勁戰六代"],
+  },
+  {
+    id: 17,
+    name: "放射紋浮動碟盤 245mm",
+    brand: "YEHDA",
+    cat: "碟盤",
+    price: 3980,
+    color: "blue",
+    fit: ["KYMCO KRV MOTO 180", "SYM DRGBT"],
+  },
+  {
+    id: 18,
+    name: "後輪輕量化碟盤",
+    brand: "MALOSSI",
+    cat: "碟盤",
+    price: 2980,
+    color: "red",
+    fit: ["YAMAHA XMAX 300", "HONDA FORZA 350"],
+  },
+  {
+    id: 19,
+    name: "ROAD SPORT 街道煞車皮",
+    brand: "POLINI",
+    cat: "煞車皮",
+    price: 1280,
+    color: "blue",
+    fit: ["全車種"],
+  },
+  {
+    id: 20,
+    name: "SINTERED 金屬燒結煞車皮",
+    brand: "MALOSSI",
+    cat: "煞車皮",
+    price: 1980,
+    color: "red",
+    fit: ["全車種"],
+  },
+  {
+    id: 21,
+    name: "低粉塵陶瓷煞車皮",
+    brand: "YEHDA",
+    cat: "煞車皮",
+    price: 1480,
+    color: "yellow",
+    fit: ["全車種"],
+  },
+  {
+    id: 22,
+    name: "TOURING 加高旅行風鏡",
+    brand: "YEHDA",
+    cat: "風鏡",
+    price: 3280,
+    color: "blue",
+    fit: ["HONDA FORZA 350", "YAMAHA XMAX 300"],
+  },
+  {
+    id: 23,
+    name: "CRYSTAL 高透光風鏡",
+    brand: "POLINI",
+    cat: "風鏡",
+    price: 2860,
+    color: "silver",
+    fit: ["HONDA ADV 350", "SYM MAXSYM TL 508"],
+  },
+  {
+    id: 24,
+    name: "RACING 雙曲面風鏡",
+    brand: "MALOSSI",
+    cat: "風鏡",
+    price: 3580,
+    color: "red",
+    fit: ["YAMAHA NMAX 155", "HONDA PCX 160"],
+  },
+  {
+    id: 25,
+    name: "原裝進口握把 EVOLUTION 無打洞",
+    brand: "POLINI",
+    cat: "握把",
+    price: 0,
+    color: "blue",
+    fit: ["全車種／安裝前請確認把手規格"],
+    image: "/media/product-polini-grip.png",
+  },
+  {
+    id: 26,
+    name: "原裝握把 黑／白款 有打洞",
+    brand: "MALOSSI",
+    cat: "握把",
+    price: 0,
+    color: "red",
+    fit: ["全車種／黑白兩色皆有現貨"],
+    image: "/media/product-malossi-grip.png",
+  },
+  {
+    id: 27,
+    name: "大彈簧 JOYMAX Z+／XMAX300／TRICITY 300",
+    brand: "MALOSSI",
+    cat: "大彈簧",
+    price: 0,
+    color: "yellow",
+    fit: ["SYM JOYMAX Z+", "YAMAHA XMAX 300", "YAMAHA TRICITY 300"],
+    image: "/media/product-malossi-spring-joymax.png",
+  },
+  {
+    id: 28,
+    name: "大彈簧 KYMCO KRV 180／G7 K值5",
+    brand: "MALOSSI",
+    cat: "大彈簧",
+    price: 0,
+    color: "red",
+    fit: ["KYMCO KRV 180", "KYMCO G7"],
+    image: "/media/product-malossi-spring-krv.png",
+  },
+  {
+    id: 29,
+    name: "短版大彈簧 G3／悍將／G5／G6／雷霆系列",
+    brand: "POLINI",
+    cat: "大彈簧",
+    price: 0,
+    color: "blue",
+    fit: [
+      "KYMCO G3／G5／G6",
+      "SYM 悍將",
+      "KYMCO 雷霆／雷霆王",
+      "KYMCO KRV 180／G7",
+    ],
+    image: "/media/product-polini-spring-short.png",
+  },
+  {
+    id: 30,
+    name: "大彈簧 馬車／勁戰／OZ150／GTR／BW’S125",
+    brand: "MALOSSI",
+    cat: "大彈簧",
+    price: 0,
+    color: "yellow",
+    fit: [
+      "YAMAHA 馬車",
+      "YAMAHA 勁戰 1～5 代",
+      "AEON OZ150",
+      "YAMAHA GTR／BW’S125／勁風光",
+    ],
+    image: "/media/product-malossi-spring-cygnus.png",
+  },
+  {
+    id: 31,
+    name: "冠軍高流量空濾 FORCE／SMAX 專用",
+    brand: "BMC",
+    cat: "空濾",
+    price: 0,
+    color: "red",
+    fit: ["YAMAHA FORCE", "YAMAHA SMAX"],
+    image: "/media/product-bmc-filter-force.png",
+  },
+  {
+    id: 32,
+    name: "冠軍高流量空濾 水冷六代戰／BWS／FORCE 2.0",
+    brand: "BMC",
+    cat: "空濾",
+    price: 0,
+    color: "red",
+    fit: [
+      "YAMAHA 水冷勁戰六代",
+      "YAMAHA 水冷 BW’S",
+      "YAMAHA FORCE 2.0／AUGUR／NMAX",
+    ],
+    image: "/media/product-bmc-filter-watercool.png",
+  },
+  {
+    id: 33,
+    name: "冠軍高流量空濾 DRG／MMBCU／4MICA／JET SL",
+    brand: "BMC",
+    cat: "空濾",
+    price: 0,
+    color: "red",
+    fit: [
+      "SYM DRG 1／2 代",
+      "SYM MMBCU／4MICA",
+      "SYM JET SL 158",
+      "SYM Fiddle DX",
+    ],
+    image: "/media/product-bmc-filter-drg.png",
+  },
+  {
+    id: 34,
+    name: "原裝皮帶 BWS125／四代勁戰專用",
+    brand: "MALOSSI",
+    cat: "皮帶",
+    price: 0,
+    color: "yellow",
+    fit: ["YAMAHA BWS125／BWS 125", "YAMAHA 四代勁戰"],
+    image: "/media/product-malossi-belt-bws.png",
+  },
+  {
+    id: 35,
+    name: "原裝皮帶 SUZUKI AN250 專用",
+    brand: "MALOSSI",
+    cat: "皮帶",
+    price: 0,
+    color: "yellow",
+    fit: ["SUZUKI AN250"],
+    image: "/media/product-malossi-belt-an250.png",
+  },
+  {
+    id: 36,
+    name: "強化皮帶 KYMCO 刺激250／刺激300 專用",
+    brand: "MALOSSI",
+    cat: "皮帶",
+    price: 0,
+    color: "yellow",
+    fit: ["KYMCO 刺激 250", "KYMCO 刺激 300"],
+    image: "/media/product-malossi-belt-kymco.png",
+  },
+  {
+    id: 37,
+    name: "一般皮帶 YAMAHA Cygnus X 125／勁戰",
+    brand: "POLINI",
+    cat: "皮帶",
+    price: 0,
+    color: "blue",
+    fit: ["YAMAHA Cygnus X 125", "YAMAHA 勁戰"],
+    image: "/media/product-polini-belt-cygnus.png",
+  },
+  {
+    id: 38,
+    name: "墨色短風鏡 DOWNTOWN GT 350 專用",
+    brand: "MALOSSI",
+    cat: "風鏡",
+    price: 0,
+    color: "smoke",
+    fit: ["KYMCO DOWNTOWN GT 350", "尺寸：長 42 × 高 40 cm"],
+    image: "/media/product-malossi-screen-downtown.png",
+  },
+  {
+    id: 39,
+    name: "燻黑前風鏡組 ITALJET DRAGSTER 200 專用",
+    brand: "MALOSSI",
+    cat: "風鏡",
+    price: 0,
+    color: "smoke",
+    fit: ["ITALJET DRAGSTER 200"],
+    image: "/media/product-malossi-screen-dragster.png",
+  },
+  {
+    id: 40,
+    name: "短風鏡 NIKITA 專用",
+    brand: "MALOSSI",
+    cat: "風鏡",
+    price: 0,
+    color: "smoke",
+    fit: ["KYMCO NIKITA"],
+    image: "/media/product-malossi-screen-nikita.png",
+  },
+  {
+    id: 41,
+    name: "風鏡 HONDA X-ADV 750 專用",
+    brand: "MALOSSI",
+    cat: "風鏡",
+    price: 0,
+    color: "smoke",
+    fit: ["HONDA X-ADV 750 2017～2020"],
+    image: "/media/product-malossi-screen-xadv.png",
+  },
 ];
-function RideCarousel(){const[slide,setSlide]=useState(0),[paused,setPaused]=useState(false);useEffect(()=>{if(paused)return;const timer=setInterval(()=>setSlide(x=>(x+1)%rides.length),4500);return()=>clearInterval(timer)},[paused]);const move=(n:number)=>setSlide(x=>(x+n+rides.length)%rides.length);return <div className="rideCarousel" onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} aria-roledescription="carousel" aria-label="燁達騎乘實拍精選"><div className="photoFrame">{rides.map((r,i)=><img key={r.src} className={i===slide?'active':''} src={r.src} alt={`燁達機車騎乘實拍 ${i+1}`}/>) }<div className="photoShade"/><div className="photoLabel"><span>0{slide+1} / 0{rides.length}</span><h2>{rides[slide].label}</h2><p>{rides[slide].note}</p></div><div className="corner tl"/><div className="corner br"/></div><button className="arrow prev" onClick={()=>move(-1)} aria-label="上一張">←</button><button className="arrow next" onClick={()=>move(1)} aria-label="下一張">→</button><div className="dots">{rides.map((_,i)=><button key={i} className={i===slide?'active':''} onClick={()=>setSlide(i)} aria-label={`顯示第 ${i+1} 張照片`}><i/></button>)}</div></div>}
-function Title({kicker,title,action}:{kicker:string,title:string,action?:()=>void}){return <div className="title"><div><p className="eyebrow purple">{kicker}</p><h2>{title}</h2></div>{action&&<button onClick={action}>查看全部 1,000+ →</button>}</div>};function PageTitle({over,title,sub}:{over:string,title:string,sub:string}){return <div className="pageTitle"><p className="eyebrow purple">{over}</p><h1>{title}</h1><p>{sub}</p></div>}
-function Visual({p,big}:{p:P,big?:boolean}){return <div className={`visual ${p.color} ${p.image?'realProductVisual':''} ${big?'big':''}`}>{p.image?<img src={p.image} alt={p.name}/>:<div className="part"><span>{p.brand}</span></div>}<small>{p.image?'實品照片 · DEMO':p.brand==='SHOEI'?'SHOEI 圖片位置 · DEMO':'DEMO PRODUCT'}</small></div>}
-function Grid({items,fav,heart,detail,add}:{items:P[],fav:number[],heart:(i:number)=>void,detail:(p:P)=>void,add:(i:number)=>void}){return <div className="productGrid">{items.map(p=><article className={`card ${p.image?'realProductCard':''}`} key={p.id}><button className="heart" onClick={()=>heart(p.id)}>{fav.includes(p.id)?'♥':'♡'}</button><button className="visualBtn" onClick={()=>detail(p)}><Visual p={p}/></button><div><small>{p.brand} · {p.cat}</small><button className="productName" onClick={()=>detail(p)}>{p.name}</button><p><b className={!p.price?'pendingPrice':''}>{nt(p.price)}</b><button aria-label={p.price?`加入 ${p.name} 到購物車`:`查看 ${p.name} 詳情`} onClick={()=>p.price?add(p.id):detail(p)}>{p.price?'＋':'→'}</button></p></div></article>)}</div>}
-function RecommendedProducts({items,fav,heart,detail,add,all}:{items:P[],fav:number[],heart:(i:number)=>void,detail:(p:P)=>void,add:(i:number)=>void,all:()=>void}){return <section className="realRecommendations"><div className="section"><div className="realRecommendationsHead"><div><p className="eyebrow">REAL PRODUCT PICKS</p><h2>實品優先推薦</h2><p>由燁達提供的實際商品照片，優先展示給正在找改裝部品的你。</p></div><button onClick={all}>查看全部實品商品　→</button></div><div className="realRecommendationsRail"><Grid items={items} fav={fav} heart={heart} detail={detail} add={add}/></div><div className="railHint"><span>{items.length} 項實品展示</span><span>左右滑動查看更多　→</span></div></div></section>}
-function Empty({text,go}:{text:string,go:()=>void}){return <div className="empty"><span>◇</span><h2>{text}</h2><p>看到喜歡的商品，點擊愛心就能收藏。</p><button className="primary" onClick={go}>開始逛逛</button></div>}
-function Cart({items,total,remove,next,shop}:{items:P[],total:number,remove:(i:number)=>void,next:()=>void,shop:()=>void}){return <section className="cartPage"><PageTitle over="YOUR BAG" title="購物車" sub={`${items.length} 件商品等待結帳`}/>{!items.length?<Empty text="購物車目前是空的" go={shop}/>:<div className="cartLayout"><div className="cartList">{items.map((p,i)=><article key={i}><Visual p={p}/><div><small>{p.brand} · {p.cat}</small><h3>{p.name}</h3><p>標準規格</p><button onClick={()=>remove(i)}>移除</button></div><div className="qty">−　1　＋</div><b>{nt(p.price)}</b></article>)}</div><Summary total={total}><button className="primary" onClick={next}>前往結帳 →</button></Summary></div>}</section>}
-function Summary({total,children,shipping}:{total:number,children?:React.ReactNode,shipping?:number}){const fee=shipping??(total>=3000?0:120);return <aside className="summary"><h2>訂單摘要</h2><p><span>商品小計</span><b>{nt(total)}</b></p><p><span>運費</span><b>{fee===0?'免運':nt(fee)}</b></p><hr/><p className="total"><span>總計</span><b>{nt(total+fee)}</b></p>{children}<small>🔒 安全結帳・本頁僅為 UI 模擬</small></aside>}
-function ShippingOptions({value,onChange}:{value:string,onChange:(method:string)=>void}){
- const group=(title:string,sub:string,options:string[][],tone='dark')=><section className={`border ${tone==='orange'?'border-[#ff9a3d] bg-[#fff8f0]':'border-zinc-300'}`}><div className={`flex items-center justify-between px-5 py-4 ${tone==='dark'?'bg-[#17181d] text-white':''}`}><div><b className="block text-sm">{title}</b><span className={`text-[10px] ${tone==='dark'?'text-zinc-400':'text-zinc-500'}`}>{sub}</span></div><span className="text-[10px] font-bold">{tone==='orange'?'免運費':'綠界物流'}</span></div><div className="choices">{options.map(r=><label key={r[2]}><input type="radio" name="ship" checked={value===r[2]} onChange={()=>onChange(r[2])}/><b>{r[0]}</b><span>{r[1]}</span></label>)}</div></section>;
- return <div className="space-y-5">{group('綠界宅配物流','配送至客人填寫的收件地址',[["黑貓宅急便","1–2 個工作天 · NT$ 120","blackcat"],["中華郵政","2–3 個工作天 · NT$ 80","post"]])}{group('綠界超商物流','使用綠界門市電子地圖選擇取貨門市',[["全家便利商店取貨","選擇全家門市 · NT$ 65","family"],["7-ELEVEN 取貨","選擇統一超商門市 · NT$ 65","seven"]],'light')}{group('燁達門市自取','商品備妥後通知取貨',[["燁達門市自取","土城門市 · 09:30–17:00","pickup"]],'orange')}</div>
+const cats = [
+  "全部商品",
+  "風鏡",
+  "傳動",
+  "前後避震",
+  "碟盤",
+  "煞車皮",
+  "安全帽",
+  "握把",
+  "大彈簧",
+  "空濾",
+  "皮帶",
+];
+const vehicleModels: Record<string, string[]> = {
+  HONDA: [
+    "FORZA 350",
+    "ADV 350",
+    "PCX 160",
+    "SH 150i",
+    "CBR500R",
+    "Monkey 125",
+  ],
+  KYMCO: [
+    "KRV MOTO 180",
+    "Racing S 150",
+    "Like Colombo 150",
+    "AK 550 Premium",
+    "RTS R 165",
+    "RomaGT",
+  ],
+  SYM: ["JET SL+ 158", "DRGBT", "MMBCU", "CLBCU", "迪爵 125", "MAXSYM TL 508"],
+  YAMAHA: [
+    "勁戰六代",
+    "FORCE 2.0",
+    "AUGUR 155",
+    "NMAX 155",
+    "XMAX 300",
+    "MT-15",
+  ],
+};
+const catImages = [
+  "/media/product-malossi-screen-downtown.png",
+  "/media/product-polini-belt-cygnus.png",
+  "/media/ride-04.jpg",
+  "/media/ride-02.jpg",
+  "/media/ride-01.jpg",
+  "/media/ride-04.jpg",
+  "/media/product-polini-grip.png",
+  "/media/product-malossi-spring-joymax.png",
+  "/media/product-bmc-filter-drg.png",
+  "/media/product-malossi-belt-bws.png",
+];
+const nt = (n: number) => (n > 0 ? `NT$ ${n.toLocaleString()}` : "售價待確認");
+export default function App() {
+  const [page, setPage] = useState("home"),
+    [cart, setCart] = useState<number[]>([]),
+    [fav, setFav] = useState<number[]>([]),
+    [cat, setCat] = useState("全部商品"),
+    [maker, setMaker] = useState(""),
+    [model, setModel] = useState(""),
+    [picked, setPicked] = useState(ps[0]),
+    [step, setStep] = useState(1),
+    [tab, setTab] = useState("數據總覽"),
+    [toast, setToast] = useState(""),
+    [memberLoggedIn, setMemberLoggedIn] = useState(false),
+    [postLoginPage, setPostLoginPage] = useState("account"),
+    [categoryOrder, setCategoryOrder] = useState(cats.slice(1)),
+    [lang, setLang] = useState<"zh" | "en">("zh");
+  useAutoTranslate(lang);
+  const tx = (zh: string, en: string) => (lang === "zh" ? zh : en);
+  useEffect(() => {
+    try {
+      setCart(JSON.parse(localStorage.getItem("cart") || "[]"));
+      setFav(JSON.parse(localStorage.getItem("fav") || "[]"));
+      setMemberLoggedIn(localStorage.getItem("member-session") === "active");
+      setLang(localStorage.getItem("site-language") === "en" ? "en" : "zh");
+      const saved = JSON.parse(
+        localStorage.getItem("category-order") || "null",
+      );
+      if (Array.isArray(saved) && saved.length === cats.length - 1)
+        setCategoryOrder(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("cart", JSON.stringify(cart));
+    localStorage.setItem("fav", JSON.stringify(fav));
+    localStorage.setItem("category-order", JSON.stringify(categoryOrder));
+    localStorage.setItem("member-session", memberLoggedIn ? "active" : "");
+    localStorage.setItem("site-language", lang);
+    document.documentElement.lang = lang === "zh" ? "zh-Hant" : "en";
+  }, [cart, fav, categoryOrder, memberLoggedIn, lang]);
+  const go = (x: string) => {
+      setPage(x);
+      scrollTo({ top: 0, behavior: "smooth" });
+    },
+    goFit = () => {
+      setPage("home");
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() =>
+          document.querySelector("#fit")?.scrollIntoView({ behavior: "smooth" }),
+        ),
+      );
+    },
+    add = (id: number) => {
+      setCart((x) => [...x, id]);
+      setToast("已加入購物車");
+      setTimeout(() => setToast(""), 1500);
+    },
+    heart = (id: number) =>
+      setFav((x) => (x.includes(id) ? x.filter((i) => i !== id) : [...x, id])),
+    detail = (p: P) => {
+      setPicked(p);
+      go("detail");
+    };
+  const filtered = useMemo(
+    () =>
+      ps
+        .filter(
+          (p) =>
+            (cat === "全部商品" || p.cat === cat) &&
+            (!maker ||
+              p.fit.some((x) => x.includes(maker)) ||
+              p.fit[0] === "全車種") &&
+            (!model ||
+              p.fit.some((x) => x.includes(model)) ||
+              p.fit[0] === "全車種"),
+        )
+        .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image))),
+    [cat, maker, model],
+  );
+  const cp = cart.map((id) => ps.find((p) => p.id === id)!).filter(Boolean),
+    total = cp.reduce((s, p) => s + p.price, 0);
+  if (page === "admin")
+    return (
+      <Admin
+        tab={tab}
+        setTab={setTab}
+        back={() => go("home")}
+        categoryOrder={categoryOrder}
+        setCategoryOrder={setCategoryOrder}
+      />
+    );
+  return (
+    <div>
+      <header>
+        <button className="logo" onClick={() => go("home")}>
+          <img
+            src="/media/yada-logo-transparent-hd.png"
+            alt="燁達機車精品店 YADA MOTORCYCLE"
+          />
+        </button>
+        <nav>
+          <button onClick={() => go("products")}>
+            {tx("所有商品", "Shop All")}
+          </button>
+          <button onClick={() => go("brands")}>
+            {tx("品牌專區", "Brands")}
+          </button>
+          <button
+            onClick={() => {
+              setCat("安全帽");
+              go("products");
+            }}
+          >
+            {tx("安全帽", "Helmets")}
+          </button>
+          <button onClick={goFit}>
+            {tx("依車種找部品", "Shop by Bike")}
+          </button>
+          <button onClick={() => go("wish")}>
+            {tx("預購／許願", "Pre-order / Wish")}
+          </button>
+        </nav>
+        <div className="tools">
+          <button
+            className="languageSwitch"
+            onClick={() => setLang((x) => (x === "zh" ? "en" : "zh"))}
+            aria-label={tx("切換為英文", "Switch to Chinese")}
+            aria-pressed={lang === "en"}
+          >
+            <span>{lang === "zh" ? "EN" : "中"}</span>
+          </button>
+          <button>⌕</button>
+          <button onClick={() => go("favorites")}>
+            ♡<i>{fav.length}</i>
+          </button>
+          <button
+            className="toolAction cartButton"
+            aria-label={tx("前往購物車", "Open shopping cart")}
+            onClick={() => go("cart")}
+          >
+            <CartIcon />
+            <span className="toolLabel">{tx("購物車", "Cart")}</span>
+            <i>{cart.length}</i>
+          </button>
+          <button
+            className="memberBtn border border-[#474952] px-3 py-2 text-[11px]"
+            aria-label={tx(
+              memberLoggedIn ? "前往會員中心" : "會員登入或註冊",
+              memberLoggedIn
+                ? "Open member center"
+                : "Member login or registration",
+            )}
+            onClick={() => go(memberLoggedIn ? "account" : "login")}
+          >
+            <UserIcon />
+            <span className="memberLabel">
+              {memberLoggedIn
+                ? tx("王小明", "Member")
+                : tx("登入／註冊", "SIGN IN")}
+            </span>
+          </button>
+          <button className="adminBtn" onClick={() => go("admin")}>
+            {tx("後台展示", "Admin Demo")} ↗
+          </button>
+        </div>
+      </header>
+      <main>
+        {page === "home" && (
+          <>
+            <section className="hero">
+              <div className="heroCopy">
+                <p className="eyebrow">YADA MOTORCYCLE</p>
+                <h1>{tx("燁達機車精品店", "YADA MOTORCYCLE")}</h1>
+                <p>
+                  {tx(
+                    "從義大利競技血統，到日常騎乘的每個細節。",
+                    "From Italian racing heritage to every detail of the daily ride.",
+                  )}
+                  <br />
+                  {tx(
+                    "嚴選真正值得你信賴的機車精品。",
+                    "Performance parts selected for riders who expect more.",
+                  )}
+                </p>
+                <button className="primary" onClick={() => go("products")}>
+                  {tx("探索所有部品", "SHOP ALL PARTS")}　→
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() =>
+                    document.querySelector("#fit")?.scrollIntoView()
+                  }
+                >
+                  {tx("依愛車精準選購", "SHOP BY MOTORCYCLE")}
+                </button>
+              </div>
+              <RideCarousel />
+            </section>
+            <section className="fit" id="fit">
+              <div>
+                <p className="eyebrow purple">FIND YOUR PARTS</p>
+                <h2>{tx("選擇你的愛車", "Choose Your Motorcycle")}</h2>
+                <p>
+                  {tx(
+                    "只顯示真正適合你的改裝部品",
+                    "See only the performance parts that fit your bike",
+                  )}
+                </p>
+              </div>
+              <div className="fitFields">
+                <label>
+                  {tx("廠牌", "MAKE")}
+                  <select
+                    value={maker}
+                    onChange={(e) => {
+                      setMaker(e.target.value);
+                      setModel("");
+                    }}
+                  >
+                    <option value="">{tx("選擇廠牌", "Select a make")}</option>
+                    {Object.keys(vehicleModels).map((x) => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {tx("車系 / 車款", "MODEL")}
+                  <select
+                    disabled={!maker}
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                  >
+                    <option value="">{tx("選擇車款", "Select a model")}</option>
+                    {(vehicleModels[maker] || []).map((x) => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </label>
+                <button onClick={() => go("products")}>
+                  {tx("搜尋適用部品", "FIND COMPATIBLE PARTS")} →
+                </button>
+              </div>
+            </section>
+            <section className="ownerStory" aria-labelledby="owner-story-title">
+              <div className="ownerStoryCopy">
+                <p className="eyebrow">OWNER STORY</p>
+                <h2 id="owner-story-title">{tx("楊竣程", "CHUN-CHENG YANG")}</h2>
+                <strong>{tx("土城燁達機車精品店", "YADA MOTORCYCLE · TUCHENG")}</strong>
+                <p className="ownerRole">{tx("勤勞工作者", "DEDICATED CRAFTSMAN")}</p>
+                <div className="ownerServices">
+                  <p>
+                    {tx(
+                      "專營歐洲、日本機車精品及大小綿羊改裝套件販售",
+                      "Specializing in European and Japanese motorcycle accessories and modification kits for scooters of all sizes.",
+                    )}
+                  </p>
+                  <p>
+                    {tx(
+                      "日本／歐洲進口安全帽販售與收藏",
+                      "Retailer and collector of imported Japanese and European motorcycle helmets.",
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="ownerVideo">
+                <OwnerStoryVideo
+                  title={tx(
+                    "楊竣程老闆介紹影片",
+                    "Owner introduction video",
+                  )}
+                />
+              </div>
+            </section>
+            <FeaturedCategories
+              order={categoryOrder}
+              fav={fav}
+              heart={heart}
+              detail={detail}
+              add={add}
+              choose={(c) => {
+                setCat(c);
+                go("products");
+              }}
+            />
+            <section className="categories">
+              <Title
+                kicker="SHOP BY CATEGORY"
+                title={tx("從你的下一項升級開始", "START YOUR NEXT UPGRADE")}
+              />
+              <div className="catGrid">
+                {categoryOrder.map((c, i) => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setCat(c);
+                      go("products");
+                    }}
+                  >
+                    <img src={catImages[cats.slice(1).indexOf(c)]} alt="" />
+                    <span>{String(i + 1).padStart(2, "0")}</span>
+                    <b>{c}</b>
+                    <small>PERFORMANCE PARTS</small>
+                    <i>↗</i>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="wishEntry">
+              <div>
+                <p className="eyebrow">CAN&apos;T FIND IT?</p>
+                <h2>{tx("找不到想要的部品？", "CAN'T FIND THE PART YOU WANT?")}</h2>
+                <p>{tx("海外精品預購、指定商品詢價，或許願我們引進新品，都可以直接告訴燁達。", "Pre-order overseas parts, request a quote, or tell us what you want YADA to source next.")}</p>
+              </div>
+              <button onClick={() => go("wish")}>{tx("前往預購／許願專區", "OPEN PRE-ORDER / WISH PAGE")} →</button>
+            </section>
+            <BrandShowcase go={() => go("brands")} />
+            <FAQ />
+          </>
+        )}
+        {page === "products" && (
+          <section className="catalog">
+            <PageTitle
+              over="SHOP ALL"
+              title={cat}
+              sub={`${maker || "全車種"} ${model} ・ 共 ${filtered.length} 件符合商品`}
+            />
+            <div className="catalogBody">
+              <aside>
+                <b>商品分類</b>
+                {cats.map((c) => (
+                  <button
+                    className={cat === c ? "active" : ""}
+                    onClick={() => setCat(c)}
+                    key={c}
+                  >
+                    {c}
+                    <span>›</span>
+                  </button>
+                ))}
+                <hr />
+                <b>品牌</b>
+                {["POLINI", "MALOSSI", "BMC", "SHOEI"].map((x) => (
+                  <label key={x}>
+                    <input type="checkbox" /> {x}
+                  </label>
+                ))}
+              </aside>
+              <div>
+                <div className="sort">
+                  <span>顯示 {filtered.length} 項商品 · 實品照片優先推薦</span>
+                  <select>
+                    <option>實品推薦排序</option>
+                    <option>最新上架</option>
+                  </select>
+                </div>
+                <Grid
+                  items={filtered}
+                  fav={fav}
+                  heart={heart}
+                  detail={detail}
+                  add={add}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+        {page === "detail" && (
+          <section className="detail">
+            <button className="back" onClick={() => go("products")}>
+              ← 返回商品列表
+            </button>
+            <Visual p={picked} big />
+            <div className="detailInfo">
+              <p className="eyebrow purple">
+                {picked.brand} · {picked.cat}
+              </p>
+              <h1>{picked.name}</h1>
+              <div className="stars">
+                ★★★★★ <span>4.9（28 則評價）</span>
+              </div>
+              <div className={`price ${!picked.price ? "pricePending" : ""}`}>
+                {nt(picked.price)}
+              </div>
+              <p>
+                義大利性能精品展示商品，實際規格、售價與庫存請以業主正式上架資料為準，購買前可先確認愛車適配。
+              </p>
+              <hr />
+              <label>
+                規格
+                <select>
+                  <option>標準規格</option>
+                  {picked.cat === "握把" && <option>黑色／白色</option>}
+                </select>
+              </label>
+              <div className="buy">
+                <button
+                  className="primary"
+                  disabled={!picked.price}
+                  onClick={() => picked.price && add(picked.id)}
+                >
+                  {picked.price ? "加入購物車" : "售價確認後開放購買"}
+                </button>
+                <button onClick={() => heart(picked.id)}>
+                  {fav.includes(picked.id) ? "♥ 已收藏" : "♡ 收藏"}
+                </button>
+              </div>
+              <div className="fitNote">
+                <b>✓ 適用車種</b>
+                {picked.fit.map((x) => (
+                  <span key={x}>{x}</span>
+                ))}
+              </div>
+              <ul>
+                <li>原裝進口／展示資料待業主確認</li>
+                <li>7 日鑑賞期（未安裝商品）</li>
+                <li>提供代安裝服務，請於結帳完成後加入官方 LINE 洽詢</li>
+              </ul>
+            </div>
+          </section>
+        )}
+        {page === "brands" && (
+          <section className="brandPage">
+            <PageTitle
+              over="AUTHENTIC PERFORMANCE"
+              title="品牌專區"
+              sub="燁達嚴選全球頂級改裝品牌，把賽道科技帶進日常騎乘。"
+            />
+            {["POLINI", "MALOSSI"].map((b, i) => (
+              <article className={i ? "redBrand" : ""} key={b}>
+                <div>
+                  <span>MADE IN ITALY</span>
+                  <h2>{b}</h2>
+                  <p>
+                    {i
+                      ? "源自義大利波隆那，以極致性能與大膽紅色基因聞名。"
+                      : "創立於 1945 年，跨越三個世代的義大利傳動工藝。"}
+                  </p>
+                  <button onClick={() => go("products")}>
+                    探索 {b} 商品 →
+                  </button>
+                </div>
+                <b>{b[0]}</b>
+              </article>
+            ))}
+          </section>
+        )}
+        {page === "wish" && <WishPage back={() => go("home")} tx={tx} />}
+        {page === "favorites" && (
+          <section className="catalog single">
+            <PageTitle
+              over="YOUR PICKS"
+              title="我的收藏"
+              sub="你精選的性能升級清單"
+            />
+            {fav.length ? (
+              <Grid
+                items={ps.filter((p) => fav.includes(p.id))}
+                fav={fav}
+                heart={heart}
+                detail={detail}
+                add={add}
+              />
+            ) : (
+              <Empty text="還沒有收藏商品" go={() => go("products")} />
+            )}
+          </section>
+        )}
+        {page === "login" && (
+          <MemberAuthV2
+            mode="login"
+            switchMode={() => go("register")}
+            success={() => {
+              setMemberLoggedIn(true);
+              setToast("登入成功");
+              go(postLoginPage);
+              setPostLoginPage("account");
+            }}
+          />
+        )}
+        {page === "register" && (
+          <MemberAuthV2
+            mode="register"
+            switchMode={() => go("login")}
+            success={() => {
+              setMemberLoggedIn(true);
+              setToast("註冊完成，已獲得 100 點迎新點數");
+              go(postLoginPage);
+              setPostLoginPage("account");
+            }}
+          />
+        )}
+        {page === "account" && (
+          <MemberCenter
+            logout={() => {
+              setMemberLoggedIn(false);
+              setToast("已登出會員");
+              go("home");
+            }}
+            shop={() => go("products")}
+          />
+        )}
+        {page === "cart" && (
+          <CartV2
+            items={cp}
+            total={total}
+            remove={(id) => setCart((x) => x.filter((n) => n !== id))}
+            increase={(id) => setCart((x) => [...x, id])}
+            decrease={(id) =>
+              setCart((x) => {
+                const index = x.indexOf(id);
+                return index < 0 ? x : x.filter((_, n) => n !== index);
+              })
+            }
+            next={() => {
+              if (memberLoggedIn) {
+                setStep(1);
+                go("checkout");
+              } else {
+                setPostLoginPage("checkout");
+                setToast("請先登入會員再繼續結帳");
+                go("login");
+              }
+            }}
+            shop={() => go("products")}
+          />
+        )}{" "}
+        {page === "checkout" && (
+          <CheckoutFlow
+            step={step}
+            setStep={setStep}
+            items={cp}
+            total={total}
+            finish={() => {
+              setCart([]);
+              go("home");
+            }}
+          />
+        )}
+      </main>
+      <footer>
+        <div>
+          <b>{tx("燁達機車精品店", "YADA MOTORCYCLE")}</b>
+          <span>YADA MOTORCYCLE</span>
+          <p>
+            {tx(
+              "專業機車改裝・精品部品",
+              "Professional motorcycle tuning and performance parts",
+            )}
+            <br />
+            {tx(
+              "把每一次騎乘，升級成你要的樣子。",
+              "Upgrade every ride, your way.",
+            )}
+          </p>
+        </div>
+        <div>
+          <b>{tx("快速連結", "QUICK LINKS")}</b>
+          <a>{tx("所有商品", "Shop All")}</a>
+          <a>{tx("品牌專區", "Brands")}</a>
+          <a>{tx("車種專區", "Shop by Bike")}</a>
+        </div>
+        <div>
+          <b>{tx("顧客服務", "CUSTOMER CARE")}</b>
+          <a href="#faq">{tx("常見問題 FAQ", "FAQ")}</a>
+          <a>{tx("配送說明", "Shipping")}</a>
+          <a>{tx("購物須知", "Shopping Guide")}</a>
+          <a>{tx("退換貨政策", "Returns")}</a>
+        </div>
+        <div>
+          <b>{tx("營業資訊", "STORE INFORMATION")}</b>
+          <p>
+            {tx("營業時間", "Opening Hours")} 09:30–17:00
+            <br />
+            {tx("週六、週日可來電預約", "Weekend visits by appointment")}
+            <br />
+            236{" "}
+            {tx(
+              "新北市土城區裕生里",
+              "Yusheng Village, Tucheng District, New Taipei City",
+            )}
+            <br />
+            {tx("中華路一段 70 巷 5 號", "No. 5, Ln. 70, Sec. 1, Zhonghua Rd.")}
+          </p>
+        </div>
+        <div className="footerContact">
+          <b>{tx("聯絡資訊", "CONTACT")}</b>
+          <a
+            href="https://www.facebook.com/yang.jun.cheng.154748/?locale=zh_TW"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Facebook：YANG CHUN CHENG
+          </a>
+          <small className="contactNote">
+            {tx("需要登入 Facebook 才能查看", "Facebook login required")}
+          </small>
+          <a
+            href="https://www.facebook.com/profile.php?id=61584832796150"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Facebook：{tx("燁達機車精品店", "YADA MOTORCYCLE")}
+          </a>
+          <small className="contactNote">
+            {tx("不需登入即可查看", "No login required")}
+          </small>
+          <a href="mailto:rossi.b0168@msa.hinet.net">
+            Email：rossi.b0168@msa.hinet.net
+          </a>
+        </div>
+        <small>
+          © 2026 {tx("燁達機車精品店", "YADA MOTORCYCLE")}｜
+          {tx(
+            "本網站為提案 Demo，所有內容與交易皆為模擬。",
+            "Proposal demo. All content and transactions are simulated.",
+          )}
+        </small>
+      </footer>
+      <nav
+        className={`mobileNav ${page === "checkout" ? "checkoutHidden" : ""}`}
+        aria-label={tx("手機版快速導覽", "Mobile navigation")}
+      >
+        <button
+          className={page === "home" ? "active" : ""}
+          onClick={() => go("home")}
+        >
+          <i>⌂</i>
+          <span>{tx("首頁", "Home")}</span>
+        </button>
+        <button
+          className={page === "products" ? "active" : ""}
+          onClick={() => go("products")}
+        >
+          <i>▦</i>
+          <span>{tx("商品", "Shop")}</span>
+        </button>
+        <button onClick={goFit}>
+          <i>⌖</i>
+          <span>{tx("選車", "Bike")}</span>
+        </button>
+        <button
+          className={
+            ["login", "register", "account"].includes(page) ? "active" : ""
+          }
+          onClick={() => go(memberLoggedIn ? "account" : "login")}
+        >
+          <i><UserIcon /></i>
+          <span>{tx("會員", "Member")}</span>
+        </button>
+        <button
+          className={page === "cart" ? "active" : ""}
+          onClick={() => go("cart")}
+        >
+          <i><CartIcon /></i>
+          <span>{tx("購物車", "Cart")}</span>
+          <em>{cart.length}</em>
+        </button>
+      </nav>
+      {toast && <div className="toast">✓ {toast}</div>}
+    </div>
+  );
 }
-function CheckoutFlow({step,setStep,items,total,finish}:{step:number,setStep:(n:number)=>void,items:P[],total:number,finish:()=>void}){
- const[shipMethod,setShipMethod]=useState('blackcat');
- const[selectedStore,setSelectedStore]=useState('');
- const shipFees:Record<string,number>={blackcat:120,post:80,family:65,seven:65,pickup:0};
- const isHome=shipMethod==='blackcat'||shipMethod==='post';
- const isCvs=shipMethod==='family'||shipMethod==='seven';
- const cvs=shipMethod==='family'?{brand:'全家便利商店',id:'020599',name:'土城中華店',address:'新北市土城區中華路一段 70 號',phone:'02-2260-0000'}:{brand:'7-ELEVEN',id:'254918',name:'裕生門市',address:'新北市土城區裕生路 68 號',phone:'02-2270-0000'};
- if(step===4)return <section className="done"><div>✓</div><p className="eyebrow purple">ORDER COMPLETE</p><h1>訂單模擬完成！</h1><p>訂單編號 <b>YD260828-0186</b></p><span>確認信已模擬寄送至 demo@yehda.tw<br/>此流程未產生真實訂單或扣款。</span><aside className="my-6 border border-[#ff9a3d] bg-[#fff7ed] p-5 text-left"><b className="block text-sm text-[#a94f00]">需要代安裝服務嗎？</b><p className="mt-2 text-xs leading-6 text-zinc-600">燁達提供專業代安裝服務。網站不接受安裝預約，請加入官方 LINE，傳送訂單編號、車款與商品資訊洽詢工資及時間。</p><button className="mt-3 w-full bg-[#19b955] px-4 py-3 text-sm font-bold text-white">加入燁達官方 LINE 洽詢　→</button></aside><button className="primary" onClick={finish}>返回首頁</button></section>;
- return <section className="checkout"><div className="checkTop"><button onClick={()=>step>1&&setStep(step-1)}>← 返回</button><b>燁達 YEHDA</b><span>安全結帳 DEMO</span></div><div className="steps">{['配送方式','收件資料','付款方式','完成'].map((x,i)=><div className={step>=i+1?'on':''} key={x}><i>{step>i+1?'✓':i+1}</i><span>{x}</span></div>)}</div><div className="checkLayout"><div className="form"><h2>{['選擇配送方式','填寫收件／取貨資料','選擇付款方式'][step-1]}</h2>
-  {step===1&&<ShippingOptions value={shipMethod} onChange={method=>{setShipMethod(method);setSelectedStore('')}}/>}
-  {step===2&&<div className="formGrid">
-   <label>{isCvs?'取貨人真實姓名':'收件人姓名'}<input defaultValue="王小明"/><small className="mt-1 block text-[10px] font-normal text-zinc-400">{isCvs?'請填寫與證件相同的姓名':'物流聯絡使用'}</small></label>
-   <label>手機號碼<input inputMode="tel" defaultValue="0912345678"/><small className="mt-1 block text-[10px] font-normal text-zinc-400">請填 09 開頭的 10 位數手機</small></label>
-   <label className="wide">電子信箱（訂單通知）<input type="email" defaultValue="demo@yehda.tw"/></label>
-   {isHome&&<><label>郵遞區號<input inputMode="numeric" defaultValue="236"/></label><label>縣市<select><option>新北市</option><option>台北市</option><option>桃園市</option></select></label><label>地區<select><option>土城區</option><option>板橋區</option></select></label><label className="wide">詳細地址<input defaultValue="中華路一段 70 巷 5 號"/></label>{shipMethod==='blackcat'&&<label className="wide">希望配送時段（選填）<select><option>不指定</option><option>13:00 前</option><option>14:00–18:00</option></select></label>}<label className="wide">配送備註（選填）<input placeholder="例如：管理室代收、到貨前請先電話聯絡"/></label></>}
-   {isCvs&&<div className="wide border border-zinc-300 bg-zinc-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><b className="block text-sm">{cvs.brand}取貨門市</b><span className="text-[10px] text-zinc-500">正式上線時開啟綠界門市電子地圖</span></div><button type="button" onClick={()=>setSelectedStore(shipMethod)} className="bg-[#17181d] px-4 py-3 text-xs font-bold text-white">{selectedStore===shipMethod?'重新選擇門市':'選擇取貨門市'} →</button></div>{selectedStore===shipMethod?<div className="mt-4 grid gap-2 border-l-2 border-[#654cff] bg-white p-4 text-xs"><b>{cvs.name}　<span className="font-normal text-zinc-400">店號 {cvs.id}</span></b><span>{cvs.address}</span><span>門市電話：{cvs.phone}</span></div>:<p className="mt-4 text-xs text-[#a94f00]">尚未選擇取貨門市</p>}</div>}
-   {shipMethod==='pickup'&&<><div className="wide border border-[#ff9a3d] bg-[#fff8f0] p-4 text-xs leading-6"><b className="block text-sm">燁達機車精品門市</b><span>236 新北市土城區裕生里中華路一段 70 巷 5 號</span><br/><span>營業時間 09:30–17:00；商品備妥後通知取貨</span></div><label className="wide">自取備註（選填）<input placeholder="有其他需求可在此留言"/></label></>}
-   <div className="wide notice">以上資料會顯示於後台訂單管理。{isCvs?'超商取貨不需要填寫住家地址。':shipMethod==='pickup'?'門市自取不需要填寫配送地址。':'店家可依資料建立託運單並聯絡收件人。'}</div>
-  </div>}
-  {step===3&&<><Choices name="pay" rows={[["綠界科技｜信用卡","VISA · Mastercard · JCB（模擬）"],[isCvs?'超商取貨付款':'取貨付款',isCvs?'於所選超商門市付款取貨':'門市自取時付款'],["ATM 虛擬帳號","付款期限 3 天"]]}/><div className="notice">ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。</div></>}
-  <button className="primary next" onClick={()=>setStep(step+1)}>{step===3?'確認送出模擬訂單':'繼續下一步'} →</button></div><Summary total={total||6980} shipping={(total||6980)>=3000?0:shipFees[shipMethod]}/></div></section>
+function CartV2({
+  items,
+  total,
+  remove,
+  increase,
+  decrease,
+  next,
+  shop,
+}: {
+  items: P[];
+  total: number;
+  remove: (id: number) => void;
+  increase: (id: number) => void;
+  decrease: (id: number) => void;
+  next: () => void;
+  shop: () => void;
+}) {
+  const grouped = Object.values(
+    items.reduce<Record<number, { p: P; qty: number }>>((acc, p) => {
+      acc[p.id] ??= { p, qty: 0 };
+      acc[p.id].qty++;
+      return acc;
+    }, {}),
+  );
+  return (
+    <section className="cartV2 mx-auto max-w-[1180px] px-4 py-10 md:py-16">
+      <div className="flex flex-col gap-4 border-b border-zinc-300 pb-7 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow purple">YOUR BAG</p>
+          <h1 className="mt-3 text-4xl font-black md:text-5xl">購物車</h1>
+          <p className="mt-2 text-xs text-zinc-500">
+            {grouped.length} 種商品 · 共 {items.length} 件
+          </p>
+        </div>
+        <button
+          onClick={shop}
+          className="min-h-11 border border-zinc-300 bg-white px-5 text-xs"
+        >
+          ← 繼續選購
+        </button>
+      </div>
+      {!items.length ? (
+        <div className="mt-7">
+          <Empty text="購物車目前是空的" go={shop} />
+        </div>
+      ) : (
+        <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="overflow-hidden border border-zinc-200 bg-white">
+            <div className="hidden grid-cols-[110px_minmax(0,1fr)_110px_120px] gap-5 bg-[#17181d] px-5 py-3 text-[9px] font-bold tracking-wider text-zinc-400 md:grid">
+              <span>商品</span>
+              <span>商品資訊</span>
+              <span>數量</span>
+              <span className="text-right">小計</span>
+            </div>
+            {grouped.map(({ p, qty }) => (
+              <article
+                key={p.id}
+                className="grid grid-cols-[86px_minmax(0,1fr)] gap-4 border-b border-zinc-100 p-4 last:border-b-0 md:grid-cols-[110px_minmax(0,1fr)_110px_120px] md:items-center md:gap-5 md:p-5"
+              >
+                <Visual p={p} />
+                <div className="min-w-0">
+                  <small className="text-[9px] tracking-wider text-zinc-400">
+                    {p.brand} · {p.cat}
+                  </small>
+                  <h2 className="mt-2 text-sm font-bold leading-5 md:text-base">
+                    {p.name}
+                  </h2>
+                  <p className="mt-1 text-[10px] text-zinc-500">標準規格</p>
+                  <b className="mt-3 block text-xs md:hidden">{nt(p.price)}</b>
+                  <button
+                    onClick={() => remove(p.id)}
+                    className="mt-3 border-0 bg-transparent p-0 text-[10px] text-zinc-400 underline"
+                  >
+                    移除商品
+                  </button>
+                </div>
+                <div className="col-start-2 flex w-max items-center border border-zinc-300 md:col-start-auto">
+                  <button
+                    aria-label={`減少 ${p.name} 數量`}
+                    onClick={() => decrease(p.id)}
+                    className="h-9 w-9 border-0 bg-white text-lg"
+                  >
+                    −
+                  </button>
+                  <span className="grid h-9 min-w-9 place-items-center border-x border-zinc-300 text-xs font-bold">
+                    {qty}
+                  </span>
+                  <button
+                    aria-label={`增加 ${p.name} 數量`}
+                    onClick={() => increase(p.id)}
+                    className="h-9 w-9 border-0 bg-white text-lg"
+                  >
+                    ＋
+                  </button>
+                </div>
+                <b className="col-start-2 text-right text-sm md:col-start-auto md:text-base">
+                  {nt(p.price * qty)}
+                </b>
+              </article>
+            ))}
+          </div>
+          <aside className="border border-zinc-200 bg-white p-5 shadow-sm md:p-7">
+            <h2 className="text-xl font-bold">訂單摘要</h2>
+            <div className="mt-5 border border-[#dcd6ff] bg-[#f4f2ff] p-4 text-[10px] leading-5 text-zinc-600">
+              <b className="block text-[#563adc]">依綠界物流通路計算運費</b>
+              超商取貨顯示固定基礎運費；黑貓與郵局會依材積由店家確認報價。
+            </div>
+            <div className="mt-5 flex">
+              <input
+                className="min-w-0 flex-1 border border-zinc-300 px-3 py-3 text-xs"
+                placeholder="優惠代碼"
+              />
+              <button className="border border-l-0 border-zinc-300 bg-zinc-100 px-4 text-xs font-bold">
+                套用
+              </button>
+            </div>
+            <div className="mt-5 space-y-3 border-b border-zinc-200 pb-5 text-xs">
+              <p className="flex justify-between">
+                <span className="text-zinc-500">商品小計</span>
+                <b>{nt(total)}</b>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-zinc-500">運費</span>
+                <b>結帳時依配送方式計算</b>
+              </p>
+            </div>
+            <div className="flex items-end justify-between py-5">
+              <span className="text-sm font-bold">預估總計</span>
+              <b className="text-2xl">{nt(total)}</b>
+            </div>
+            <button
+              onClick={next}
+              className="min-h-14 w-full bg-gradient-to-r from-[#563adc] to-[#7656ff] px-5 text-sm font-bold text-white"
+            >
+              前往安全結帳　→
+            </button>
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[9px] text-zinc-500">
+              <span>
+                🔒<b className="mt-1 block">安全結帳</b>
+              </span>
+              <span>
+                ↩<b className="mt-1 block">七日鑑賞</b>
+              </span>
+              <span>
+                ✓<b className="mt-1 block">正品保證</b>
+              </span>
+            </div>
+            <p className="mt-5 border-t border-zinc-100 pt-4 text-center text-[9px] leading-5 text-zinc-400">
+              本頁為 Demo，不會建立真實訂單或扣款。
+            </p>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
 }
-function Checkout({step,setStep,items,total,finish}:{step:number,setStep:(n:number)=>void,items:P[],total:number,finish:()=>void}){
- if(step===4)return <section className="done"><div>✓</div><p className="eyebrow purple">ORDER COMPLETE</p><h1>訂單模擬完成！</h1><p>訂單編號 <b>YD260828-0186</b></p><span>確認信已模擬寄送至 demo@yehda.tw<br/>此流程未產生真實訂單或扣款。</span><aside className="my-6 border border-[#ff9a3d] bg-[#fff7ed] p-5 text-left"><b className="block text-sm text-[#a94f00]">需要代安裝服務嗎？</b><p className="mt-2 text-xs leading-6 text-zinc-600">燁達提供專業代安裝服務。網站不接受安裝預約，請加入官方 LINE，傳送訂單編號、車款與商品資訊洽詢工資及時間。</p><button className="mt-3 w-full bg-[#19b955] px-4 py-3 text-sm font-bold text-white">加入燁達官方 LINE 洽詢　→</button></aside><button className="primary" onClick={finish}>返回首頁</button></section>;
- return <section className="checkout"><div className="checkTop"><button onClick={()=>step>1&&setStep(step-1)}>← 返回</button><b>燁達 YEHDA</b><span>安全結帳 DEMO</span></div><div className="steps">{['配送資訊','配送方式','付款方式','完成'].map((x,i)=><div className={step>=i+1?'on':''} key={x}><i>{step>i+1?'✓':i+1}</i><span>{x}</span></div>)}</div><div className="checkLayout"><div className="form"><h2>{['配送／取貨資料','選擇配送方式','選擇付款方式'][step-1]}</h2>{step===1&&<div className="formGrid"><label>收件人姓名<input defaultValue="王小明"/></label><label>手機號碼<input defaultValue="0912-345-678"/></label><label className="wide">電子信箱<input defaultValue="demo@yehda.tw"/></label><label>郵遞區號<input defaultValue="236"/></label><label>縣市<select><option>新北市</option><option>台北市</option><option>桃園市</option></select></label><label>地區<select><option>土城區</option><option>板橋區</option></select></label><label className="wide">詳細地址<input defaultValue="中華路一段 70 巷 5 號"/></label><label className="wide">配送備註<input placeholder="例如：管理室代收、到貨前請先電話聯絡"/></label><div className="wide notice">以上收件資料會顯示於後台訂單管理，供店家填寫託運單與聯絡收件人。</div></div>}{step===2&&<ShippingGroups/>}{step===3&&<><Choices name="pay" rows={[['綠界科技｜信用卡','VISA · Mastercard · JCB（模擬）'],['取貨付款','門市自取時付款'],['ATM 虛擬帳號','付款期限 3 天']]}/><div className="notice">ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。</div></>}<button className="primary next" onClick={()=>setStep(step+1)}>{step===3?'確認送出模擬訂單':'繼續下一步'} →</button></div><Summary total={total||6980}/></div></section>}
-function ShippingGroups(){return <div className="space-y-5"><section className="border border-zinc-300"><div className="flex items-center justify-between bg-[#17181d] px-5 py-4 text-white"><div><b className="block text-sm">宅配寄送</b><span className="text-[10px] text-zinc-400">配送至客人填寫的收件地址</span></div><span>配送到府</span></div><Choices name="ship" rows={[['黑貓宅急便','1–2 個工作天 · NT$ 120'],['中華郵政','2–3 個工作天 · NT$ 80']]}/></section><section className="border border-[#ff9a3d] bg-[#fff8f0]"><div className="px-5 pt-4"><b className="block text-sm">門市自取</b><span className="text-[10px] text-zinc-500">商品備妥後通知取貨，不收運費</span></div><Choices name="ship" rows={[['燁達門市自取','236 新北市土城區裕生里中華路一段 70 巷 5 號 · 09:30–17:00']]}/></section></div>}
-function Choices({name,rows}:{name:string,rows:string[][]}){return <div className="choices">{rows.map((r,i)=><label key={r[0]}><input type="radio" name={name} defaultChecked={!i}/><b>{r[0]}</b><span>{r[1]}</span></label>)}</div>}
-const focusProducts=(category:string)=>ps.filter(p=>category==='傳動'?['傳動','皮帶','大彈簧'].includes(p.cat):p.cat===category).sort((a,b)=>Number(Boolean(b.image))-Number(Boolean(a.image))).slice(0,4);
-function FeaturedCategories({order,choose,fav,heart,detail,add}:{order:string[],choose:(c:string)=>void,fav:number[],heart:(i:number)=>void,detail:(p:P)=>void,add:(i:number)=>void}){return <section className="featuredProducts"><div className="featuredProductsIntro section"><p className="eyebrow purple">PRIORITY CATEGORIES</p><h2>本週焦點分類</h2><p>依照後台分類優先順序，展示前三項分類商品；同分類中有實品照片的商品優先。</p></div>{order.slice(0,3).map((c,i)=><div className={`featuredProductSection ${i%2?'alt':''}`} key={c}><div className="section"><div className="featuredProductHead"><div><span>PRIORITY 0{i+1}</span><h3>{c}</h3><p>{i===0?'本週第一優先推薦分類':'依後台排序自動接續顯示'}</p></div><button onClick={()=>choose(c)}>查看全部 {c}　→</button></div><Grid items={focusProducts(c)} fav={fav} heart={heart} detail={detail} add={add}/></div></div>)}</section>}
-function CategoryManager({order,setOrder}:{order:string[],setOrder:(x:string[])=>void}){const[dragging,setDragging]=useState<string|null>(null);const move=(from:number,to:number)=>{if(to<0||to>=order.length)return;const next=[...order];const[item]=next.splice(from,1);next.splice(to,0,item);setOrder(next)};const drop=(target:string)=>{if(!dragging||dragging===target)return;move(order.indexOf(dragging),order.indexOf(target));setDragging(null)};return <div className="categoryManager"><div className="categoryManagerTop"><div><p>首頁分類展示順序</p><h2>拖曳調整優先順序</h2><span>前三順位會依序成為首頁的三個商品區塊，每個區塊展示四項商品。</span></div><b>已自動儲存</b></div><div className="categoryRows">{order.map((c,i)=><article key={c} draggable onDragStart={()=>setDragging(c)} onDragEnd={()=>setDragging(null)} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(c)} className={dragging===c?'dragging':''}><span className="dragHandle">⋮⋮</span><i>{String(i+1).padStart(2,'0')}</i><img src={catImages[cats.slice(1).indexOf(c)]} alt=""/><div><b>{c}</b><small>{i<3?`首頁第 ${i+1} 商品區塊`:'暫不顯示於焦點區'}</small></div>{i<3&&<em>首頁顯示</em>}<div className="rowActions"><button onClick={()=>move(i,i-1)} disabled={!i} aria-label="向上移動">↑</button><button onClick={()=>move(i,i+1)} disabled={i===order.length-1} aria-label="向下移動">↓</button></div></article>)}</div><div className="categoryPreview"><b>目前首頁前三項</b><span>01 {order[0]}</span><span>02 {order[1]}</span><span>03 {order[2]}</span></div></div>}
-type DemoMember={id:number,name:string,phone:string,email:string,tier:string,points:number,spend:number,orders:number,status:'正常'|'停權',joined:string};
-const initialMembers:DemoMember[]=[{id:1,name:'王小明',phone:'0912345678',email:'ming@example.com',tier:'銀牌',points:1280,spend:28600,orders:6,status:'正常',joined:'2026/08/12'},{id:2,name:'林柏宇',phone:'0988520168',email:'lin@example.com',tier:'金牌',points:3260,spend:68800,orders:14,status:'正常',joined:'2026/05/20'},{id:3,name:'許雅婷',phone:'0978123456',email:'ya@example.com',tier:'一般',points:360,spend:9280,orders:3,status:'正常',joined:'2026/08/25'},{id:4,name:'陳冠廷',phone:'0935660721',email:'chen@example.com',tier:'一般',points:80,spend:4060,orders:1,status:'停權',joined:'2026/07/03'}];
-function MembersManager(){const[members,setMembers]=useState<DemoMember[]>(initialMembers),[query,setQuery]=useState(''),[filter,setFilter]=useState('全部'),[selectedId,setSelectedId]=useState(1),[pointAmount,setPointAmount]=useState('100'),[reason,setReason]=useState('店家手動調整'),[logs,setLogs]=useState(['王小明　購買訂單 #YD0186　+70 點','林柏宇　店家活動贈點　+500 點']);useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('demo-members')||'null');if(Array.isArray(saved))setMembers(saved)}catch{}},[]);useEffect(()=>{localStorage.setItem('demo-members',JSON.stringify(members))},[members]);const shown=members.filter(m=>(filter==='全部'||m.status===filter)&&`${m.name}${m.phone}${m.email}`.toLowerCase().includes(query.toLowerCase())),selected=members.find(m=>m.id===selectedId)||members[0];const adjust=(direction:1|-1)=>{const amount=Math.max(0,Number(pointAmount)||0);if(!amount)return;setMembers(ms=>ms.map(m=>m.id===selected.id?{...m,points:Math.max(0,m.points+direction*amount)}:m));setLogs(x=>[`${selected.name}　${reason||'店家手動調整'}　${direction>0?'+':'−'}${amount} 點`,...x].slice(0,6))};const toggle=()=>setMembers(ms=>ms.map(m=>m.id===selected.id?{...m,status:m.status==='正常'?'停權':'正常'}:m));const totalPoints=members.reduce((s,m)=>s+m.points,0);return <div className="p-4 md:p-8"><div className="grid gap-3 sm:grid-cols-3"><article className="bg-white p-5 shadow-sm"><small className="text-zinc-400">會員總數</small><b className="mt-2 block text-2xl">{members.length}</b></article><article className="bg-white p-5 shadow-sm"><small className="text-zinc-400">流通點數</small><b className="mt-2 block text-2xl text-[#654cff]">{totalPoints.toLocaleString()} 點</b></article><article className="bg-white p-5 shadow-sm"><small className="text-zinc-400">本月新增</small><b className="mt-2 block text-2xl">+28</b></article></div><div className="mt-5 grid gap-5 xl:grid-cols-[1fr_340px]"><section className="min-w-0 bg-white p-4 shadow-sm md:p-5"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><input value={query} onChange={e=>setQuery(e.target.value)} className="border border-zinc-300 px-4 py-3 text-xs" placeholder="搜尋姓名、電話或 Email"/><div className="flex gap-2">{['全部','正常','停權'].map(x=><button key={x} onClick={()=>setFilter(x)} className={`border px-3 py-2 text-xs ${filter===x?'border-[#654cff] bg-[#efedff] text-[#654cff]':'border-zinc-300 bg-white'}`}>{x}</button>)}</div></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[680px] border-collapse text-left text-xs"><thead className="bg-zinc-50 text-zinc-500"><tr><th className="p-3">會員</th><th>等級</th><th>點數</th><th>累積消費</th><th>訂單</th><th>狀態</th><th>操作</th></tr></thead><tbody>{shown.map(m=><tr key={m.id} onClick={()=>setSelectedId(m.id)} className={`cursor-pointer border-b border-zinc-100 ${selected.id===m.id?'bg-[#f5f3ff]':'hover:bg-zinc-50'}`}><td className="p-3"><b>{m.name}</b><small className="block text-zinc-400">{m.phone} · {m.email}</small></td><td>{m.tier}</td><td className="font-bold text-[#654cff]">{m.points.toLocaleString()}</td><td>NT$ {m.spend.toLocaleString()}</td><td>{m.orders}</td><td><span className={m.status==='正常'?'text-emerald-600':'text-red-500'}>● {m.status}</span></td><td><button className="text-[#654cff]">查看</button></td></tr>)}</tbody></table></div></section><aside className="h-max bg-[#17181d] p-6 text-white shadow-sm"><div className="flex items-start justify-between"><div><small className="text-[#9988ff]">MEMBER DETAIL</small><h2 className="mt-2 text-xl font-bold">{selected.name}</h2><span className="text-xs text-zinc-400">YD-M{String(selected.id).padStart(4,'0')} · {selected.tier}會員</span></div><span className={`px-2 py-1 text-[9px] ${selected.status==='正常'?'bg-emerald-900 text-emerald-300':'bg-red-950 text-red-300'}`}>{selected.status}</span></div><div className="my-5 border-y border-white/10 py-5"><small className="text-zinc-500">目前點數</small><b className="mt-2 block text-4xl text-[#a997ff]">{selected.points.toLocaleString()} <i className="text-xs not-italic">點</i></b></div><div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400"><span>手機<b className="mt-1 block text-white">{selected.phone}</b></span><span>加入日期<b className="mt-1 block text-white">{selected.joined}</b></span><span>訂單數<b className="mt-1 block text-white">{selected.orders} 筆</b></span><span>累積消費<b className="mt-1 block text-white">NT$ {selected.spend.toLocaleString()}</b></span></div><div className="mt-6 border-t border-white/10 pt-5"><b className="text-xs">點數調整</b><input type="number" min="1" value={pointAmount} onChange={e=>setPointAmount(e.target.value)} className="mt-3 w-full border border-white/20 bg-white/5 px-3 py-3 text-sm text-white"/><input value={reason} onChange={e=>setReason(e.target.value)} className="mt-2 w-full border border-white/20 bg-white/5 px-3 py-3 text-xs text-white" placeholder="調整原因"/><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={()=>adjust(1)} className="bg-[#654cff] px-3 py-3 text-xs font-bold">＋ 增加點數</button><button onClick={()=>adjust(-1)} className="border border-white/25 px-3 py-3 text-xs">− 扣除點數</button></div></div><button onClick={toggle} className={`mt-5 w-full border px-3 py-3 text-xs ${selected.status==='正常'?'border-red-800 text-red-300':'border-emerald-700 text-emerald-300'}`}>{selected.status==='正常'?'停權此會員':'恢復會員資格'}</button></aside></div><section className="mt-5 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold">最近點數異動</h2><div className="mt-3 divide-y divide-zinc-100 text-xs">{logs.map((x,i)=><p className="py-3" key={`${x}-${i}`}>{x}</p>)}</div></section><p className="mt-4 text-[10px] text-zinc-500">Demo：會員狀態與點數調整會保存在目前瀏覽器，正式上線後需由後端記錄每筆點數來源與操作人員。</p></div>}
-function MembersManagerV2(){
- const[members,setMembers]=useState<DemoMember[]>(initialMembers),[query,setQuery]=useState(''),[filter,setFilter]=useState('全部'),[selectedId,setSelectedId]=useState(1),[pointAmount,setPointAmount]=useState('100'),[reason,setReason]=useState('店家手動調整'),[logs,setLogs]=useState(['王小明｜購買訂單 #YD0186｜+70 點','林柏宇｜店家活動贈點｜+500 點']);
- useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('demo-members')||'null');if(Array.isArray(saved))setMembers(saved)}catch{}},[]);
- useEffect(()=>{localStorage.setItem('demo-members',JSON.stringify(members))},[members]);
- const shown=members.filter(m=>(filter==='全部'||m.status===filter)&&`${m.name}${m.phone}${m.email}`.toLowerCase().includes(query.toLowerCase()));
- const selected=members.find(m=>m.id===selectedId)||members[0];
- const adjust=(direction:1|-1)=>{const amount=Math.max(0,Number(pointAmount)||0);if(!amount)return;setMembers(ms=>ms.map(m=>m.id===selected.id?{...m,points:Math.max(0,m.points+direction*amount)}:m));setLogs(x=>[`${selected.name}｜${reason||'店家手動調整'}｜${direction>0?'+':'−'}${amount} 點`,...x].slice(0,6))};
- const toggle=()=>setMembers(ms=>ms.map(m=>m.id===selected.id?{...m,status:m.status==='正常'?'停權':'正常'}:m));
- const totalPoints=members.reduce((s,m)=>s+m.points,0),activeMembers=members.filter(m=>m.status==='正常').length;
- return <div className="membersManagerV2">
-  <section className="memberStats" aria-label="會員統計">
-   <article><span>01</span><div><small>會員總數</small><b>{members.length}</b><em>{activeMembers} 位正常使用</em></div></article>
-   <article><span>02</span><div><small>流通點數</small><b>{totalPoints.toLocaleString()} <i>點</i></b><em>待會員折抵使用</em></div></article>
-   <article><span>03</span><div><small>本月新增</small><b>+28</b><em>較上月增加 12%</em></div></article>
-  </section>
-  <div className="memberWorkspace">
-   <section className="memberDirectory">
-    <div className="memberDirectoryHead"><div><p>MEMBER DIRECTORY</p><h2>會員名單</h2><span>點選會員可查看資料與調整點數</span></div><b>{shown.length} 位會員</b></div>
-    <div className="memberTools"><label><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜尋姓名、電話或 Email" aria-label="搜尋會員"/></label><div>{['全部','正常','停權'].map(x=><button key={x} onClick={()=>setFilter(x)} className={filter===x?'active':''}>{x}</button>)}</div></div>
-    <div className="memberTableWrap"><table className="memberTable"><thead><tr><th>會員資料</th><th>等級</th><th>可用點數</th><th>累積消費</th><th>訂單</th><th>狀態</th><th></th></tr></thead><tbody>{shown.map(m=><tr key={m.id} className={selected.id===m.id?'selected':''} onClick={()=>setSelectedId(m.id)}><td><span className="memberAvatar">{m.name.slice(0,1)}</span><div><b>{m.name}</b><small>{m.phone}<br/>{m.email}</small></div></td><td><em className={`tier tier${m.tier}`}>{m.tier}</em></td><td><strong>{m.points.toLocaleString()} 點</strong></td><td>NT$ {m.spend.toLocaleString()}</td><td>{m.orders} 筆</td><td><span className={`memberStatus ${m.status==='正常'?'ok':'paused'}`}>● {m.status}</span></td><td><button onClick={e=>{e.stopPropagation();setSelectedId(m.id)}} aria-label={`查看 ${m.name}`}>→</button></td></tr>)}</tbody></table></div>
-    <div className="memberCards">{shown.map(m=><button key={m.id} className={selected.id===m.id?'selected':''} onClick={()=>setSelectedId(m.id)}><span className="memberAvatar">{m.name.slice(0,1)}</span><div><b>{m.name}</b><small>{m.phone}<br/>{m.email}</small></div><strong>{m.points.toLocaleString()} 點</strong><em className={`memberStatus ${m.status==='正常'?'ok':'paused'}`}>● {m.status}</em><i>→</i></button>)}</div>
-    {!shown.length&&<div className="memberEmpty">找不到符合條件的會員</div>}
-   </section>
-   <aside className="memberDetailPanel">
-    <div className="memberDetailTop"><div><p>SELECTED MEMBER</p><h2>{selected.name}</h2><span>YD-M{String(selected.id).padStart(4,'0')} · {selected.tier}會員</span></div><em className={`memberStatus ${selected.status==='正常'?'ok':'paused'}`}>{selected.status}</em></div>
-    <div className="memberPointHero"><small>目前可用點數</small><b>{selected.points.toLocaleString()} <i>點</i></b><span>100 點可折抵 NT$100</span></div>
-    <dl className="memberFacts"><div><dt>手機</dt><dd>{selected.phone}</dd></div><div><dt>加入日期</dt><dd>{selected.joined}</dd></div><div><dt>電子信箱</dt><dd>{selected.email}</dd></div><div><dt>訂單／消費</dt><dd>{selected.orders} 筆 · NT$ {selected.spend.toLocaleString()}</dd></div></dl>
-    <div className="pointEditor"><div><b>點數調整</b><small>每次異動都需要填寫原因</small></div><label>調整點數<input type="number" min="1" value={pointAmount} onChange={e=>setPointAmount(e.target.value)}/></label><label>調整原因<input value={reason} onChange={e=>setReason(e.target.value)} placeholder="例如：活動贈點"/></label><div><button onClick={()=>adjust(1)}>＋ 增加點數</button><button onClick={()=>adjust(-1)}>− 扣除點數</button></div></div>
-    <button onClick={toggle} className={`memberAccess ${selected.status==='正常'?'danger':'restore'}`}>{selected.status==='正常'?'停權此會員':'恢復會員資格'}</button>
-   </aside>
-  </div>
-  <section className="pointActivity"><div><p>POINT ACTIVITY</p><h2>最近點數異動</h2></div><div>{logs.map((x,i)=>{const[name,desc,points]=x.split('｜');return <article key={`${x}-${i}`}><span>{name.slice(0,1)}</span><div><b>{name}</b><small>{desc}</small></div><strong className={points?.includes('−')?'minus':''}>{points}</strong></article>})}</div></section>
-  <p className="memberDemoNote">Demo：會員狀態與點數調整會保存在目前瀏覽器；正式上線後需由後端記錄每筆點數來源、時間與操作人員。</p>
- </div>
+function MemberAuthV2({
+  mode,
+  switchMode,
+  success,
+}: {
+  mode: "login" | "register";
+  switchMode: () => void;
+  success: () => void;
+}) {
+  const register = mode === "register",
+    [showPassword, setShowPassword] = useState(false),
+    [password, setPassword] = useState(""),
+    [error, setError] = useState("");
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+    const data = new FormData(e.currentTarget);
+    if (register && data.get("password") !== data.get("confirm")) {
+      setError("兩次輸入的密碼不一致，請重新確認。");
+      return;
+    }
+    success();
+  };
+  return (
+    <section className="authV2 min-h-[680px] bg-[#0d0e12] px-4 py-8 text-white md:py-16">
+      <div className="mx-auto grid max-w-[1040px] overflow-hidden border border-white/10 bg-[#17191f] shadow-2xl lg:grid-cols-[.85fr_1.15fr]">
+        <aside className="relative overflow-hidden bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-6 sm:p-8 lg:p-12">
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full border-[55px] border-white/5" />
+          <p className="relative text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">
+            YEHDA RIDERS CLUB
+          </p>
+          <h1 className="relative mt-4 text-3xl font-black leading-tight sm:text-4xl">
+            登入騎士身份
+            <br />
+            累積每次升級
+          </h1>
+          <p className="relative mt-4 text-xs leading-6 text-zinc-300">
+            訂單、收藏、愛車與會員點數，一個帳號集中管理。
+          </p>
+          <div className="relative mt-7 grid grid-cols-3 gap-2 text-center text-[9px]">
+            <span className="border border-white/15 p-3">
+              點數
+              <br />
+              <b>回饋</b>
+            </span>
+            <span className="border border-white/15 p-3">
+              訂單
+              <br />
+              <b>追蹤</b>
+            </span>
+            <span className="border border-white/15 p-3">
+              愛車
+              <br />
+              <b>管理</b>
+            </span>
+          </div>
+        </aside>
+        <form
+          onSubmit={submit}
+          className="min-w-0 bg-white p-5 text-[#17181d] sm:p-8 lg:p-12"
+        >
+          <div className="grid grid-cols-2 border border-zinc-200 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => mode !== "login" && switchMode()}
+              className={`min-h-10 border-0 ${!register ? "bg-[#17181d] font-bold text-white" : "bg-transparent text-zinc-500"}`}
+            >
+              會員登入
+            </button>
+            <button
+              type="button"
+              onClick={() => mode !== "register" && switchMode()}
+              className={`min-h-10 border-0 ${register ? "bg-[#17181d] font-bold text-white" : "bg-transparent text-zinc-500"}`}
+            >
+              免費註冊
+            </button>
+          </div>
+          <div className="mt-7">
+            <p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">
+              {register ? "CREATE ACCOUNT" : "WELCOME BACK"}
+            </p>
+            <h2 className="mt-2 text-3xl font-black">
+              {register ? "建立會員帳號" : "歡迎回來"}
+            </h2>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              {register
+                ? "完成註冊即可獲得 100 點迎新點數。"
+                : "使用手機號碼或 Email 登入會員中心。"}
+            </p>
+          </div>
+          {error && (
+            <div
+              role="alert"
+              className="mt-5 border-l-4 border-red-500 bg-red-50 p-3 text-xs text-red-700"
+            >
+              {error}
+            </div>
+          )}
+          <div
+            className={`mt-6 grid gap-4 ${register ? "sm:grid-cols-2" : ""}`}
+          >
+            {register && (
+              <label className="text-xs font-bold">
+                姓名
+                <input
+                  name="name"
+                  autoComplete="name"
+                  required
+                  className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal"
+                  placeholder="請輸入真實姓名"
+                />
+              </label>
+            )}
+            <label className="text-xs font-bold">
+              {register ? "手機號碼" : "手機號碼或電子信箱"}
+              <input
+                name="identifier"
+                autoComplete={register ? "tel" : "username"}
+                required
+                inputMode={register ? "tel" : "text"}
+                pattern={register ? "09[0-9]{8}" : undefined}
+                className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal"
+                placeholder={
+                  register
+                    ? "09 開頭的 10 位數手機"
+                    : "0912345678 / demo@yehda.tw"
+                }
+              />
+              {register && (
+                <small className="mt-1 block font-normal text-zinc-400">
+                  作為訂單及取貨聯絡使用
+                </small>
+              )}
+            </label>
+            {register && (
+              <label className="text-xs font-bold sm:col-span-2">
+                電子信箱
+                <input
+                  name="email"
+                  autoComplete="email"
+                  required
+                  type="email"
+                  className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal"
+                  placeholder="demo@yehda.tw"
+                />
+              </label>
+            )}
+            <label
+              className={`text-xs font-bold ${register ? "sm:col-span-2" : ""}`}
+            >
+              密碼
+              <div className="relative mt-2">
+                <input
+                  name="password"
+                  autoComplete={register ? "new-password" : "current-password"}
+                  required
+                  minLength={6}
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="min-h-12 w-full border border-zinc-300 px-4 pr-16 font-normal"
+                  placeholder="至少 6 個字元"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((x) => !x)}
+                  className="absolute inset-y-0 right-0 w-14 border-0 bg-transparent text-[10px] text-[#654cff]"
+                >
+                  {showPassword ? "隱藏" : "顯示"}
+                </button>
+              </div>
+              {register && (
+                <div className="mt-2 flex gap-1">
+                  {[1, 2, 3, 4].map((x, i) => (
+                    <i
+                      key={x}
+                      className={`h-1 flex-1 ${password.length > i * 2 ? "bg-[#654cff]" : "bg-zinc-200"}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </label>
+            {register && (
+              <label className="text-xs font-bold sm:col-span-2">
+                確認密碼
+                <input
+                  name="confirm"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  type={showPassword ? "text" : "password"}
+                  className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal"
+                  placeholder="請再次輸入密碼"
+                />
+              </label>
+            )}
+            {register ? (
+              <label className="flex items-start gap-3 text-[10px] leading-5 text-zinc-500 sm:col-span-2">
+                <input
+                  required
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 flex-none"
+                />
+                我已閱讀並同意會員條款與隱私權政策（Demo）
+              </label>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] text-zinc-500">
+                <label>
+                  <input type="checkbox" /> 記住我的登入狀態
+                </label>
+                <button
+                  type="button"
+                  className="border-0 bg-transparent text-[#654cff]"
+                >
+                  忘記密碼？
+                </button>
+              </div>
+            )}
+            <button
+              type="submit"
+              className={`min-h-13 bg-gradient-to-r from-[#563adc] to-[#7656ff] px-5 text-sm font-bold text-white ${register ? "sm:col-span-2" : ""}`}
+            >
+              {register ? "完成註冊並領取 100 點" : "登入會員中心"}　→
+            </button>
+          </div>
+          <p className="mt-6 border-t border-zinc-200 pt-5 text-center text-[9px] leading-5 text-zinc-400">
+            展示用會員流程，不會傳送或儲存真實密碼。
+          </p>
+        </form>
+      </div>
+    </section>
+  );
 }
-const tabs=['數據總覽','商品管理','分類管理','品牌管理','車種資料庫','訂單管理','退貨管理','會員管理'];
-function Admin({tab,setTab,back,categoryOrder,setCategoryOrder}:{tab:string,setTab:(s:string)=>void,back:()=>void,categoryOrder:string[],setCategoryOrder:(x:string[])=>void}){return <div className="admin"><aside><div className="adminLogo"><b>燁達</b><span>STORE ADMIN</span></div><nav>{tabs.map((x,i)=><button className={tab===x?'active':''} onClick={()=>setTab(x)} key={x}><i>{['⌁','□','▦','◆','⌖','▤','↩','♙'][i]}</i>{x}{x==='訂單管理'&&<em>8</em>}</button>)}</nav><button className="store" onClick={back}>← 返回前台商城</button></aside><main><header><div><p>燁達機車精品 / {tab}</p><h1>{tab}</h1></div><div><button>⌕</button><button>♢<i>3</i></button><span>YD</span><b>管理員<small>admin@yehda.tw</small></b></div></header>{tab==='數據總覽'?<Dashboard/>:tab==='分類管理'?<CategoryManager order={categoryOrder} setOrder={setCategoryOrder}/>:tab==='訂單管理'?<OrdersManager/>:tab==='會員管理'?<MembersManagerV2/>:<AdminTable tab={tab}/>}</main></div>}
-function Dashboard(){return <div className="dashboard"><div className="date"><span>最後更新：今天 23:48</span><button>近 30 天⌄</button><button className="adminPrimary">＋ 新增商品</button></div><div className="kpis">{[['本月營業額','NT$ 486,820','↑ 12.8%'],['本月訂單','186','↑ 8.4%'],['平均客單價','NT$ 2,617','↑ 3.1%'],['待處理訂單','8','需處理']].map((x,i)=><article key={x[0]}><span>{['＄','▤','↗','！'][i]}</span><small>{x[0]}</small><b>{x[1]}</b><em>{x[2]}</em></article>)}</div><div className="dashGrid"><section className="chart"><h2>營業額趨勢 <small>近 7 日</small></h2><div>{[34,48,40,64,58,82,72].map((n,i)=><i key={i} style={{height:n+'%'}}/>)}</div><p><span>08/22</span><span>08/23</span><span>08/24</span><span>08/25</span><span>08/26</span><span>08/27</span><span>今天</span></p></section><section className="orders"><h2>最新訂單 <button>查看全部 →</button></h2>{[['#YD0186','王小明','NT$ 6,980','待出貨'],['#YD0185','林柏宇','NT$ 12,800','已付款'],['#YD0184','陳冠廷','NT$ 4,060','處理中'],['#YD0183','張家豪','NT$ 16,800','已完成']].map(x=><p key={x[0]}><b>{x[0]}</b><span>{x[1]}</span><strong>{x[2]}</strong><em>{x[3]}</em></p>)}</section></div><section className="quick quickWide"><h2>快速操作</h2><div>{['新增商品','建立訂單','新增車種','更新首頁','匯出報表','網站設定'].map(x=><button key={x}>＋<span>{x}</span></button>)}</div></section></div>}
-function OrdersManager(){
- const[query,setQuery]=useState('');
- const orders=[
-  {id:'#YD0187',name:'許雅婷',phone:'0978123456',method:'全家便利商店取貨',location:'全家土城中華店｜店號 020599｜新北市土城區中華路一段 70 號｜02-2260-0000',note:'綠界門市電子地圖回傳',total:'NT$ 3,280',status:'待出貨'},
-  {id:'#YD0186',name:'王小明',phone:'0912345678',method:'黑貓宅急便',location:'236 新北市土城區中華路一段 70 巷 5 號',note:'管理室代收',total:'NT$ 6,980',status:'待出貨'},
-  {id:'#YD0185',name:'林柏宇',phone:'0988520168',method:'中華郵政',location:'220 新北市板橋區文化路一段 168 號',note:'到貨前請先聯絡',total:'NT$ 12,800',status:'處理中'},
-  {id:'#YD0184',name:'陳冠廷',phone:'0935660721',method:'燁達門市自取',location:'236 新北市土城區裕生里中華路一段 70 巷 5 號',note:'備妥後電話通知',total:'NT$ 4,060',status:'待取貨'}
- ];
- const shown=orders.filter(o=>`${o.id}${o.name}${o.phone}${o.method}`.toLowerCase().includes(query.toLowerCase()));
- return <div className="ordersManager">
-  <div className="ordersToolbar"><div><p>DELIVERY INFORMATION</p><h2>訂單配送資料</h2><span>集中查看宅配、超商取貨與門市自取資訊</span></div><label><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜尋訂單、姓名或電話"/></label></div>
-  <div className="ordersList">{shown.map((o,i)=><details key={o.id} open={!i} className="orderItem">
-   <summary className="orderSummary"><div className="orderPrimary"><b>{o.id}</b><em>{o.status}</em></div><div className="orderCustomer"><b>{o.name}</b><small>{o.phone}</small></div><strong className="orderShipping">{o.method}</strong><b className="orderTotal">{o.total}</b><i className="orderToggle">＋</i></summary>
-   <div className="orderDetails"><div><small>收件／取貨人資料</small><b>{o.name}　{o.phone}</b><span>demo@yehda.tw</span></div><div><small>配送／取貨地點</small><b>{o.location}</b><span>備註：{o.note}</span></div><div><small>店家操作</small><div className="orderActions"><button>列印寄件資料</button><button>填入物流單號</button></div></div></div>
-  </details>)}</div>
-  {!shown.length&&<div className="ordersEmpty">找不到符合的訂單資料</div>}
-  <p className="ordersNote">Demo 顯示：宅配會保留完整地址；超商取貨會保留門市店號、名稱、地址與電話；門市自取不收集住家地址。</p>
- </div>
+function MemberAuth({
+  mode,
+  switchMode,
+  success,
+}: {
+  mode: "login" | "register";
+  switchMode: () => void;
+  success: () => void;
+}) {
+  const register = mode === "register";
+  return (
+    <section className="min-h-[720px] bg-[#101116] px-4 py-16 text-white">
+      <div className="mx-auto grid max-w-[980px] overflow-hidden border border-[#30323a] bg-[#17191f] shadow-2xl md:grid-cols-[.9fr_1.1fr]">
+        <aside className="relative overflow-hidden bg-gradient-to-br from-[#583be0] via-[#2b225b] to-[#101116] p-8 md:p-12">
+          <p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">
+            YEHDA RIDERS CLUB
+          </p>
+          <h1 className="mt-5 text-4xl font-black leading-tight">
+            登入騎士身份
+            <br />
+            累積每次升級
+          </h1>
+          <p className="mt-5 text-xs leading-7 text-zinc-300">
+            查看訂單、收藏商品並累積會員點數。
+            <br />
+            每消費 NT$100 可獲得 1 點。
+          </p>
+          <div className="mt-10 grid grid-cols-3 gap-2 text-center text-[10px]">
+            <span className="border border-white/20 p-3">
+              會員專屬
+              <br />
+              <b>點數回饋</b>
+            </span>
+            <span className="border border-white/20 p-3">
+              快速查看
+              <br />
+              <b>訂單進度</b>
+            </span>
+            <span className="border border-white/20 p-3">
+              儲存你的
+              <br />
+              <b>愛車資料</b>
+            </span>
+          </div>
+        </aside>
+        <form
+          className="bg-white p-7 text-[#17181d] md:p-12"
+          onSubmit={(e) => {
+            e.preventDefault();
+            success();
+          }}
+        >
+          <p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">
+            {register ? "CREATE ACCOUNT" : "MEMBER LOGIN"}
+          </p>
+          <h2 className="mt-3 text-3xl font-black">
+            {register ? "建立會員帳號" : "會員登入"}
+          </h2>
+          <p className="mt-2 text-xs text-zinc-500">
+            {register
+              ? "加入即可獲得 100 點迎新點數"
+              : "歡迎回來，繼續你的性能升級旅程。"}
+          </p>
+          <div className="mt-8 grid gap-4">
+            {register && (
+              <label className="text-xs font-bold">
+                姓名
+                <input
+                  required
+                  className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
+                  placeholder="王小明"
+                />
+              </label>
+            )}
+            <label className="text-xs font-bold">
+              {register ? "手機號碼" : "手機號碼或電子信箱"}
+              <input
+                required
+                className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
+                placeholder={
+                  register ? "0912345678" : "0912345678 / demo@yehda.tw"
+                }
+              />
+            </label>
+            {register && (
+              <label className="text-xs font-bold">
+                電子信箱
+                <input
+                  required
+                  type="email"
+                  className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
+                  placeholder="demo@yehda.tw"
+                />
+              </label>
+            )}
+            <label className="text-xs font-bold">
+              密碼
+              <input
+                required
+                minLength={6}
+                type="password"
+                className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
+                placeholder="至少 6 個字元"
+              />
+            </label>
+            {register && (
+              <label className="text-xs font-bold">
+                確認密碼
+                <input
+                  required
+                  minLength={6}
+                  type="password"
+                  className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
+                  placeholder="再次輸入密碼"
+                />
+              </label>
+            )}
+            {register ? (
+              <label className="flex items-start gap-2 text-[10px] leading-5 text-zinc-500">
+                <input required type="checkbox" className="mt-1" />
+                我已閱讀並同意會員條款與隱私權政策（Demo）
+              </label>
+            ) : (
+              <div className="flex justify-between text-[10px] text-zinc-500">
+                <label>
+                  <input type="checkbox" /> 記住我的登入狀態
+                </label>
+                <button
+                  type="button"
+                  className="border-0 bg-transparent text-[#654cff]"
+                >
+                  忘記密碼？
+                </button>
+              </div>
+            )}
+            <button
+              type="submit"
+              className="mt-2 min-h-12 bg-gradient-to-r from-[#563adc] to-[#7455ff] px-5 font-bold text-white"
+            >
+              {register ? "立即註冊並領取 100 點" : "登入會員中心"}　→
+            </button>
+          </div>
+          <div className="mt-7 border-t border-zinc-200 pt-6 text-center text-xs text-zinc-500">
+            {register ? "已經是會員？" : "還不是會員？"}{" "}
+            <button
+              type="button"
+              onClick={switchMode}
+              className="border-0 bg-transparent font-bold text-[#654cff]"
+            >
+              {register ? "返回登入" : "免費註冊"}
+            </button>
+          </div>
+          <p className="mt-5 text-center text-[9px] text-zinc-400">
+            本頁為展示用會員流程，不會傳送或儲存真實密碼。
+          </p>
+        </form>
+      </div>
+    </section>
+  );
 }
-function AdminTable({tab}:{tab:string}){return <div className="adminTable"><div className="listTools"><div><button className="active">全部</button><button>上架中</button></div><div><input placeholder={`搜尋${tab}…`}/><button className="adminPrimary">＋ 新增項目</button></div></div><section><table><thead><tr><th>□</th><th>項目名稱</th><th>狀態</th><th>售價／日期</th><th>庫存／資料</th><th>操作</th></tr></thead><tbody>{ps.map((p,i)=><tr key={p.id}><td>□</td><td><i className={`tableImg ${p.color}`}>{p.brand[0]}</i><b>{tab==='商品管理'?p.name:`${tab.replace('管理','')}項目 ${i+1}`}<small>{p.brand} · YD-00{p.id}</small></b></td><td><span className="status">● 上架中</span></td><td>{nt(p.price)}</td><td>{12-i} 件</td><td><button>編輯</button><button>•••</button></td></tr>)}</tbody></table></section><p className="pagination">顯示 1–6，共 186 筆　　‹　<b>1</b>　2　3　…　31　›</p></div>}
+function MemberCenter({
+  logout,
+  shop,
+}: {
+  logout: () => void;
+  shop: () => void;
+}) {
+  return (
+    <section className="mx-auto max-w-[1180px] px-4 py-14 md:py-20">
+      <div className="flex flex-col gap-5 border-b border-zinc-300 pb-8 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="eyebrow purple">RIDERS CLUB</p>
+          <h1 className="mt-4 text-4xl font-black">王小明，你好</h1>
+          <p className="mt-2 text-sm text-zinc-500">
+            YEHDA 銀牌會員 · 會員編號 YD-M0001
+          </p>
+        </div>
+        <button
+          onClick={logout}
+          className="border border-zinc-300 bg-white px-5 py-3 text-xs"
+        >
+          登出會員
+        </button>
+      </div>
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <article className="bg-gradient-to-br from-[#17181d] to-[#302567] p-6 text-white sm:col-span-2">
+            <span className="text-[9px] tracking-[.2em] text-[#ff9a3d]">
+              AVAILABLE POINTS
+            </span>
+            <b className="mt-4 block text-5xl">
+              1,280 <small className="text-sm">點</small>
+            </b>
+            <p className="mt-5 text-xs text-zinc-300">
+              100 點可折抵 NT$100；單筆最高折抵訂單金額 20%。
+            </p>
+            <div className="mt-6 h-1.5 bg-white/15">
+              <i className="block h-full w-[64%] bg-gradient-to-r from-[#ff7900] to-[#7657ff]" />
+            </div>
+            <small className="mt-2 block text-[9px] text-zinc-400">
+              再累積 720 點升級金牌會員
+            </small>
+          </article>
+          <article className="border border-zinc-200 bg-white p-6">
+            <span className="text-[9px] tracking-wider text-zinc-400">
+              今年消費
+            </span>
+            <b className="mt-4 block text-2xl">NT$ 28,600</b>
+            <span className="mt-8 block text-[9px] text-zinc-400">
+              完成訂單
+            </span>
+            <b className="mt-2 block text-xl">6 筆</b>
+          </article>
+        </div>
+        <aside className="border border-zinc-200 bg-white p-6">
+          <h2 className="text-lg font-bold">我的愛車</h2>
+          <div className="mt-5 border-l-4 border-[#654cff] bg-zinc-50 p-4">
+            <b>YAMAHA FORCE 2.0</b>
+            <span className="mt-1 block text-xs text-zinc-500">
+              2023 · 日常／性能改裝
+            </span>
+          </div>
+          <button className="mt-4 w-full border border-zinc-300 bg-white px-4 py-3 text-xs">
+            管理愛車資料
+          </button>
+        </aside>
+      </div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        <section className="border border-zinc-200 bg-white p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">最近訂單</h2>
+            <button className="border-0 bg-transparent text-xs text-[#654cff]">
+              查看全部 →
+            </button>
+          </div>
+          <div className="mt-4 divide-y divide-zinc-100 text-xs">
+            {[
+              ["#YD0186", "處理中", "NT$ 6,980"],
+              ["#YD0172", "已完成", "NT$ 3,280"],
+            ].map((x) => (
+              <div key={x[0]} className="grid grid-cols-3 gap-2 py-4">
+                <b>{x[0]}</b>
+                <span className="text-[#654cff]">{x[1]}</span>
+                <b className="text-right">{x[2]}</b>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={shop}
+            className="mt-3 w-full bg-[#17181d] px-4 py-3 text-xs font-bold text-white"
+          >
+            繼續選購商品
+          </button>
+        </section>
+        <section className="border border-zinc-200 bg-white p-6">
+          <h2 className="text-lg font-bold">點數紀錄</h2>
+          <div className="mt-4 divide-y divide-zinc-100 text-xs">
+            {[
+              ["購買訂單 #YD0186", "2026/08/28", "+70"],
+              ["註冊迎新點數", "2026/08/12", "+100"],
+              ["訂單折抵 #YD0172", "2026/08/01", "−200"],
+            ].map((x) => (
+              <div key={x[0]} className="grid grid-cols-[1fr_auto] gap-3 py-4">
+                <span>
+                  <b className="block">{x[0]}</b>
+                  <small className="text-zinc-400">{x[1]}</small>
+                </span>
+                <b
+                  className={
+                    x[2].startsWith("+")
+                      ? "text-emerald-600"
+                      : "text-orange-600"
+                  }
+                >
+                  {x[2]} 點
+                </b>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+function BrandShowcase({ go }: { go: () => void }) {
+  const brands = [
+    {
+      name: "POLINI",
+      img: "/media/polini.jpg",
+      sub: "ITALIAN RACING PARTS · SINCE 1945",
+      className: "polini",
+    },
+    {
+      name: "MALOSSI",
+      img: "/media/malossi.jpg",
+      sub: "RACING PERFORMANCE · MADE IN ITALY",
+      className: "malossi",
+    },
+  ];
+  return (
+    <section className="brandExperience">
+      <div className="brandExperienceTitle">
+        <p className="eyebrow purple">OFFICIAL DISTRIBUTION</p>
+        <h2>義大利性能基因</h2>
+        <p>移動滑鼠，擦開品牌背後的競技靈魂</p>
+      </div>
+      <div className="brandRevealGrid">
+        {brands.map((b) => (
+          <button
+            key={b.name}
+            className={`brandReveal ${b.className}`}
+            onClick={go}
+            onPointerMove={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              e.currentTarget.style.setProperty(
+                "--mx",
+                `${e.clientX - r.left}px`,
+              );
+              e.currentTarget.style.setProperty(
+                "--my",
+                `${e.clientY - r.top}px`,
+              );
+            }}
+          >
+            <img src={b.img} alt={`${b.name} 品牌標誌`} />
+            <div className="brandCover">
+              <span>AUTHORIZED BRAND</span>
+              <b>{b.name}</b>
+              <small>{b.sub}</small>
+              <i>MOVE TO REVEAL　↗</i>
+            </div>
+            <div className="revealRing" />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+function FAQ() {
+  const rows = [
+    ["營業時間是幾點？", "營業時間為每日 09:30–17:00。"],
+    ["週六、週日可以預約嗎？", "可以，請先來電預約，我們會協助安排服務時間。"],
+    [
+      "自帶商品的安裝工資如何計算？",
+      "安裝工資會依商品與車種判斷，請加 LINE 提供商品及車型資訊後詢問。",
+    ],
+    ["現場刷卡是否需要手續費？", "現場刷卡需加收 3% 手續費。"],
+  ];
+  return (
+    <section id="faq" className="faqSection">
+      <div className="faqLayout">
+        <div className="faqIntro">
+          <p className="eyebrow">HELP CENTER</p>
+          <h2>常見問題 FAQ</h2>
+          <p>
+            在出發前，先找到你需要的答案。
+            <br />
+            其他問題歡迎來電或透過 LINE 詢問。
+          </p>
+        </div>
+        <div className="faqList">
+          {rows.map((r, i) => (
+            <details key={r[0]}>
+              <summary>
+                <span>0{i + 1}</span>
+                <b>{r[0]}</b>
+                <i>＋</i>
+              </summary>
+              <p>{r[1]}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+      <div className="faqMeta">
+        <span>
+          <b>營業時間</b>09:30–17:00
+        </span>
+        <span>
+          <b>週六、週日</b>來電預約
+        </span>
+        <span>
+          <b>營業地址</b>236 新北市土城區裕生里中華路一段 70 巷 5 號
+        </span>
+      </div>
+    </section>
+  );
+}
+const rides = [
+  {
+    src: "/media/ride-01.jpg",
+    label: "STREET ATTACK",
+    note: "每一個彎，都值得更好的操控",
+  },
+  {
+    src: "/media/ride-02.jpg",
+    label: "TRACK FOCUSED",
+    note: "讓街道性能擁有賽道靈魂",
+  },
+  {
+    src: "/media/ride-03.jpg",
+    label: "PURE MOTION",
+    note: "速度與機械美學的交會",
+  },
+  {
+    src: "/media/ride-04.jpg",
+    label: "RIDE BEYOND",
+    note: "專業選品，陪你突破每一段路",
+  },
+];
+function RideCarousel() {
+  const [slide, setSlide] = useState(0),
+    [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(
+      () => setSlide((x) => (x + 1) % rides.length),
+      4500,
+    );
+    return () => clearInterval(timer);
+  }, [paused]);
+  const move = (n: number) =>
+    setSlide((x) => (x + n + rides.length) % rides.length);
+  return (
+    <div
+      className="rideCarousel"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      aria-roledescription="carousel"
+      aria-label="燁達騎乘實拍精選"
+    >
+      <div className="photoFrame">
+        {rides.map((r, i) => (
+          <img
+            key={r.src}
+            className={i === slide ? "active" : ""}
+            src={r.src}
+            alt={`燁達機車騎乘實拍 ${i + 1}`}
+          />
+        ))}
+        <div className="photoShade" />
+        <div className="photoLabel">
+          <span>
+            0{slide + 1} / 0{rides.length}
+          </span>
+          <h2>{rides[slide].label}</h2>
+          <p>{rides[slide].note}</p>
+        </div>
+        <div className="corner tl" />
+        <div className="corner br" />
+      </div>
+      <button
+        className="arrow prev"
+        onClick={() => move(-1)}
+        aria-label="上一張"
+      >
+        ←
+      </button>
+      <button
+        className="arrow next"
+        onClick={() => move(1)}
+        aria-label="下一張"
+      >
+        →
+      </button>
+      <div className="dots">
+        {rides.map((_, i) => (
+          <button
+            key={i}
+            className={i === slide ? "active" : ""}
+            onClick={() => setSlide(i)}
+            aria-label={`顯示第 ${i + 1} 張照片`}
+          >
+            <i />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+function Title({
+  kicker,
+  title,
+  action,
+}: {
+  kicker: string;
+  title: string;
+  action?: () => void;
+}) {
+  return (
+    <div className="title">
+      <div>
+        <p className="eyebrow purple">{kicker}</p>
+        <h2>{title}</h2>
+      </div>
+      {action && <button onClick={action}>查看全部 1,000+ →</button>}
+    </div>
+  );
+}
+function PageTitle({
+  over,
+  title,
+  sub,
+}: {
+  over: string;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <div className="pageTitle">
+      <p className="eyebrow purple">{over}</p>
+      <h1>{title}</h1>
+      <p>{sub}</p>
+    </div>
+  );
+}
+function Visual({ p, big }: { p: P; big?: boolean }) {
+  return (
+    <div
+      className={`visual ${p.color} ${p.image ? "realProductVisual" : ""} ${big ? "big" : ""}`}
+    >
+      {p.image ? (
+        <img src={p.image} alt={p.name} />
+      ) : (
+        <div className="part">
+          <span>{p.brand}</span>
+        </div>
+      )}
+      <small>
+        {p.image
+          ? "實品照片 · DEMO"
+          : p.brand === "SHOEI"
+            ? "SHOEI 圖片位置 · DEMO"
+            : "DEMO PRODUCT"}
+      </small>
+    </div>
+  );
+}
+function Grid({
+  items,
+  fav,
+  heart,
+  detail,
+  add,
+}: {
+  items: P[];
+  fav: number[];
+  heart: (i: number) => void;
+  detail: (p: P) => void;
+  add: (i: number) => void;
+}) {
+  return (
+    <div className="productGrid">
+      {items.map((p) => (
+        <article
+          className={`card ${p.image ? "realProductCard" : ""}`}
+          key={p.id}
+        >
+          <button className="heart" onClick={() => heart(p.id)}>
+            {fav.includes(p.id) ? "♥" : "♡"}
+          </button>
+          <button className="visualBtn" onClick={() => detail(p)}>
+            <Visual p={p} />
+          </button>
+          <div>
+            <small>
+              {p.brand} · {p.cat}
+            </small>
+            <button className="productName" onClick={() => detail(p)}>
+              {p.name}
+            </button>
+            <p>
+              <b className={!p.price ? "pendingPrice" : ""}>{nt(p.price)}</b>
+              <button
+                aria-label={
+                  p.price ? `加入 ${p.name} 到購物車` : `查看 ${p.name} 詳情`
+                }
+                onClick={() => (p.price ? add(p.id) : detail(p))}
+              >
+                {p.price ? "＋" : "→"}
+              </button>
+            </p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+function RecommendedProducts({
+  items,
+  fav,
+  heart,
+  detail,
+  add,
+  all,
+}: {
+  items: P[];
+  fav: number[];
+  heart: (i: number) => void;
+  detail: (p: P) => void;
+  add: (i: number) => void;
+  all: () => void;
+}) {
+  return (
+    <section className="realRecommendations">
+      <div className="section">
+        <div className="realRecommendationsHead">
+          <div>
+            <p className="eyebrow">REAL PRODUCT PICKS</p>
+            <h2>實品優先推薦</h2>
+            <p>由燁達提供的實際商品照片，優先展示給正在找改裝部品的你。</p>
+          </div>
+          <button onClick={all}>查看全部實品商品　→</button>
+        </div>
+        <div className="realRecommendationsRail">
+          <Grid
+            items={items}
+            fav={fav}
+            heart={heart}
+            detail={detail}
+            add={add}
+          />
+        </div>
+        <div className="railHint">
+          <span>{items.length} 項實品展示</span>
+          <span>左右滑動查看更多　→</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+function Empty({ text, go }: { text: string; go: () => void }) {
+  return (
+    <div className="empty">
+      <span>◇</span>
+      <h2>{text}</h2>
+      <p>看到喜歡的商品，點擊愛心就能收藏。</p>
+      <button className="primary" onClick={go}>
+        開始逛逛
+      </button>
+    </div>
+  );
+}
+function Cart({
+  items,
+  total,
+  remove,
+  next,
+  shop,
+}: {
+  items: P[];
+  total: number;
+  remove: (i: number) => void;
+  next: () => void;
+  shop: () => void;
+}) {
+  return (
+    <section className="cartPage">
+      <PageTitle
+        over="YOUR BAG"
+        title="購物車"
+        sub={`${items.length} 件商品等待結帳`}
+      />
+      {!items.length ? (
+        <Empty text="購物車目前是空的" go={shop} />
+      ) : (
+        <div className="cartLayout">
+          <div className="cartList">
+            {items.map((p, i) => (
+              <article key={i}>
+                <Visual p={p} />
+                <div>
+                  <small>
+                    {p.brand} · {p.cat}
+                  </small>
+                  <h3>{p.name}</h3>
+                  <p>標準規格</p>
+                  <button onClick={() => remove(i)}>移除</button>
+                </div>
+                <div className="qty">−　1　＋</div>
+                <b>{nt(p.price)}</b>
+              </article>
+            ))}
+          </div>
+          <Summary total={total}>
+            <button className="primary" onClick={next}>
+              前往結帳 →
+            </button>
+          </Summary>
+        </div>
+      )}
+    </section>
+  );
+}
+function Summary({
+  total,
+  children,
+  shipping,
+  shippingLabel,
+}: {
+  total: number;
+  children?: React.ReactNode;
+  shipping?: number;
+  shippingLabel?: string;
+}) {
+  const fee = shipping ?? (total >= 3000 ? 0 : 120);
+  return (
+    <aside className="summary">
+      <h2>訂單摘要</h2>
+      <p>
+        <span>商品小計</span>
+        <b>{nt(total)}</b>
+      </p>
+      <p>
+        <span>運費</span>
+        <b>{shippingLabel || (fee === 0 ? "免運" : nt(fee))}</b>
+      </p>
+      <hr />
+      <p className="total">
+        <span>{shippingLabel ? "報價前小計" : "總計"}</span>
+        <b>{nt(total + fee)}</b>
+      </p>
+      {children}
+      <small>🔒 安全結帳・本頁僅為 UI 模擬</small>
+    </aside>
+  );
+}
+function ShippingOptions({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (method: string) => void;
+}) {
+  const group = (
+    title: string,
+    sub: string,
+    options: string[][],
+    tone = "dark",
+  ) => (
+    <section
+      className={`border ${tone === "orange" ? "border-[#ff9a3d] bg-[#fff8f0]" : "border-zinc-300"}`}
+    >
+      <div
+        className={`flex items-center justify-between px-5 py-4 ${tone === "dark" ? "bg-[#17181d] text-white" : ""}`}
+      >
+        <div>
+          <b className="block text-sm">{title}</b>
+          <span
+            className={`text-[10px] ${tone === "dark" ? "text-zinc-400" : "text-zinc-500"}`}
+          >
+            {sub}
+          </span>
+        </div>
+        <span className="text-[10px] font-bold">
+          {tone === "orange" ? "免運費" : "綠界物流"}
+        </span>
+      </div>
+      <div className="choices">
+        {options.map((r) => (
+          <label key={r[2]}>
+            <input
+              type="radio"
+              name="ship"
+              checked={value === r[2]}
+              onChange={() => onChange(r[2])}
+            />
+            <b>{r[0]}</b>
+            <span>{r[1]}</span>
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+  return (
+    <div className="space-y-5">
+      {group("綠界宅配物流", "配送至客人填寫的收件地址", [
+        ["黑貓宅急便", "本島 NT$130 起 · 依材積由店家報價", "blackcat"],
+        ["中華郵政", "本島 NT$80 起 · 依材積由店家報價", "post"],
+      ])}
+      {group(
+        "綠界超商物流",
+        "使用綠界門市電子地圖選擇取貨門市",
+        [
+          ["全家便利商店取貨", "選擇全家門市 · NT$ 65", "family"],
+          ["7-ELEVEN 取貨", "選擇統一超商門市 · NT$ 65", "seven"],
+          ["萊爾富取貨", "選擇萊爾富門市 · NT$ 55", "hilife"],
+        ],
+        "light",
+      )}
+      {group(
+        "燁達門市自取",
+        "商品備妥後通知取貨",
+        [["燁達門市自取", "土城門市 · 09:30–17:00", "pickup"]],
+        "orange",
+      )}
+      {group(
+        "海外訂單詢價",
+        "確認國際運費與含運台幣總額後付款",
+        [["海外配送", "店家報價後提供綠界付款連結", "overseas"]],
+        "light",
+      )}
+    </div>
+  );
+}
+function CheckoutFlow({
+  step,
+  setStep,
+  items,
+  total,
+  finish,
+}: {
+  step: number;
+  setStep: (n: number) => void;
+  items: P[];
+  total: number;
+  finish: () => void;
+}) {
+  const [shipMethod, setShipMethod] = useState("blackcat");
+  const [selectedStore, setSelectedStore] = useState("");
+  const shipFees: Record<string, number> = {
+    blackcat: 0,
+    post: 80,
+    family: 65,
+    seven: 65,
+    hilife: 55,
+    pickup: 0,
+    overseas: 0,
+  };
+  const needsQuote = ["blackcat", "post", "overseas"].includes(shipMethod);
+  const isHome = shipMethod === "blackcat" || shipMethod === "post";
+  const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
+  const isOverseas = shipMethod === "overseas";
+  const cvs =
+    shipMethod === "family"
+      ? {
+          brand: "全家便利商店",
+          id: "020599",
+          name: "土城中華店",
+          address: "新北市土城區中華路一段 70 號",
+          phone: "02-2260-0000",
+        }
+      : shipMethod === "seven"
+        ? {
+          brand: "7-ELEVEN",
+          id: "254918",
+          name: "裕生門市",
+          address: "新北市土城區裕生路 68 號",
+          phone: "02-2270-0000",
+          }
+        : {
+            brand: "萊爾富",
+            id: "F20615",
+            name: "土城城央店",
+            address: "新北市土城區中央路一段 88 號",
+            phone: "02-2260-0000",
+          };
+  if (step === 4)
+    return (
+      <section className="done">
+        <div>✓</div>
+        <p className="eyebrow purple">ORDER COMPLETE</p>
+        <h1>{needsQuote ? "報價申請已送出！" : "訂單模擬完成！"}</h1>
+        <p>
+          訂單編號 <b>YD260828-0186</b>
+        </p>
+        <span>
+          {needsQuote
+            ? "店家確認材積與運費後，將以 Email 寄送含運總額及付款連結。"
+            : "確認信已模擬寄送至 demo@yehda.tw"}
+          <br />
+          此流程未產生真實訂單或扣款。
+        </span>
+        <aside className="my-6 border border-[#ff9a3d] bg-[#fff7ed] p-5 text-left">
+          <b className="block text-sm text-[#a94f00]">需要代安裝服務嗎？</b>
+          <p className="mt-2 text-xs leading-6 text-zinc-600">
+            燁達提供專業代安裝服務。網站不接受安裝預約，請加入官方
+            LINE，傳送訂單編號、車款與商品資訊洽詢工資及時間。
+          </p>
+          <button className="mt-3 w-full bg-[#19b955] px-4 py-3 text-sm font-bold text-white">
+            加入燁達官方 LINE 洽詢　→
+          </button>
+        </aside>
+        <button className="primary" onClick={finish}>
+          返回首頁
+        </button>
+      </section>
+    );
+  return (
+    <section className="checkout">
+      <div className="checkTop">
+        <button onClick={() => step > 1 && setStep(step - 1)}>← 返回</button>
+        <b>燁達 YEHDA</b>
+        <span>安全結帳 DEMO</span>
+      </div>
+      <div className="steps">
+        {["配送方式", "收件資料", "付款方式", "完成"].map((x, i) => (
+          <div className={step >= i + 1 ? "on" : ""} key={x}>
+            <i>{step > i + 1 ? "✓" : i + 1}</i>
+            <span>{x}</span>
+          </div>
+        ))}
+      </div>
+      <div className="checkLayout">
+        <div className="form">
+          <h2>
+            {["選擇配送方式", "填寫收件／取貨資料", "選擇付款方式"][step - 1]}
+          </h2>
+          {step === 1 && (
+            <ShippingOptions
+              value={shipMethod}
+              onChange={(method) => {
+                setShipMethod(method);
+                setSelectedStore("");
+              }}
+            />
+          )}
+          {step === 2 && (
+            <div className="formGrid">
+              <label>
+                {isCvs ? "取貨人真實姓名" : "收件人姓名"}
+                <input defaultValue="王小明" />
+                <small className="mt-1 block text-[10px] font-normal text-zinc-400">
+                  {isCvs ? "請填寫與證件相同的姓名" : "物流聯絡使用"}
+                </small>
+              </label>
+              <label>
+                手機號碼
+                <input inputMode="tel" defaultValue="0912345678" />
+                <small className="mt-1 block text-[10px] font-normal text-zinc-400">
+                  請填 09 開頭的 10 位數手機
+                </small>
+              </label>
+              <label className="wide">
+                電子信箱（訂單通知）
+                <input type="email" defaultValue="demo@yehda.tw" />
+              </label>
+              {isHome && (
+                <>
+                  <label>
+                    郵遞區號
+                    <input inputMode="numeric" defaultValue="236" />
+                  </label>
+                  <label>
+                    縣市
+                    <select>
+                      <option>新北市</option>
+                      <option>台北市</option>
+                      <option>桃園市</option>
+                    </select>
+                  </label>
+                  <label>
+                    地區
+                    <select>
+                      <option>土城區</option>
+                      <option>板橋區</option>
+                    </select>
+                  </label>
+                  <label className="wide">
+                    詳細地址
+                    <input defaultValue="中華路一段 70 巷 5 號" />
+                  </label>
+                  {shipMethod === "blackcat" && (
+                    <label className="wide">
+                      希望配送時段（選填）
+                      <select>
+                        <option>不指定</option>
+                        <option>13:00 前</option>
+                        <option>14:00–18:00</option>
+                      </select>
+                    </label>
+                  )}
+                  <label className="wide">
+                    配送備註（選填）
+                    <input placeholder="例如：管理室代收、到貨前請先電話聯絡" />
+                  </label>
+                </>
+              )}
+              {isOverseas && (
+                <>
+                  <label>
+                    國家／地區
+                    <input placeholder="例如：Japan" />
+                  </label>
+                  <label>
+                    郵遞區號
+                    <input placeholder="Postal code" />
+                  </label>
+                  <label className="wide">
+                    英文收件地址
+                    <input placeholder="Please enter the full address in English" />
+                  </label>
+                  <label>
+                    聯絡方式
+                    <select><option>LINE</option><option>WhatsApp</option><option>Email</option></select>
+                  </label>
+                  <label>
+                    聯絡帳號
+                    <input placeholder="LINE ID / WhatsApp number" />
+                  </label>
+                  <div className="wide notice">海外訂單以新台幣計價；國際運費、關稅與清關費將在付款前說明。</div>
+                </>
+              )}
+              {isCvs && (
+                <div className="wide border border-zinc-300 bg-zinc-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <b className="block text-sm">{cvs.brand}取貨門市</b>
+                      <span className="text-[10px] text-zinc-500">
+                        正式上線時開啟綠界門市電子地圖
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStore(shipMethod)}
+                      className="bg-[#17181d] px-4 py-3 text-xs font-bold text-white"
+                    >
+                      {selectedStore === shipMethod
+                        ? "重新選擇門市"
+                        : "選擇取貨門市"}{" "}
+                      →
+                    </button>
+                  </div>
+                  {selectedStore === shipMethod ? (
+                    <div className="mt-4 grid gap-2 border-l-2 border-[#654cff] bg-white p-4 text-xs">
+                      <b>
+                        {cvs.name}　
+                        <span className="font-normal text-zinc-400">
+                          店號 {cvs.id}
+                        </span>
+                      </b>
+                      <span>{cvs.address}</span>
+                      <span>門市電話：{cvs.phone}</span>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-xs text-[#a94f00]">
+                      尚未選擇取貨門市
+                    </p>
+                  )}
+                </div>
+              )}
+              {shipMethod === "pickup" && (
+                <>
+                  <div className="wide border border-[#ff9a3d] bg-[#fff8f0] p-4 text-xs leading-6">
+                    <b className="block text-sm">燁達機車精品門市</b>
+                    <span>236 新北市土城區裕生里中華路一段 70 巷 5 號</span>
+                    <br />
+                    <span>營業時間 09:30–17:00；商品備妥後通知取貨</span>
+                  </div>
+                  <label className="wide">
+                    自取備註（選填）
+                    <input placeholder="有其他需求可在此留言" />
+                  </label>
+                </>
+              )}
+              <label>
+                發票類型
+                <select><option>一般電子發票（隨貨提供證明）</option><option>公司用電子發票</option></select>
+              </label>
+              <label>
+                公司統一編號（選填）
+                <input inputMode="numeric" maxLength={8} placeholder="8 位數統編" />
+              </label>
+              <label className="wide">
+                公司抬頭（選填）
+                <input placeholder="需要統編時請填寫公司名稱" />
+              </label>
+              <div className="wide notice">
+                以上資料會顯示於後台訂單管理。
+                {isCvs
+                  ? "超商取貨不需要填寫住家地址。"
+                  : shipMethod === "pickup"
+                    ? "門市自取不需要填寫配送地址。"
+                    : isOverseas
+                      ? "海外訂單會先確認國際運費與含運總額。"
+                      : "店家可依資料建立託運單並聯絡收件人。"}
+              </div>
+            </div>
+          )}
+          {step === 3 && (
+            <>
+              {needsQuote ? (
+                <div className="border border-[#ff9a3d] bg-[#fff8f0] p-5">
+                  <b className="block text-sm">先送出運費報價申請</b>
+                  <p className="mt-2 text-xs leading-6 text-zinc-600">{isOverseas ? "店家會確認國際運費、含運台幣總額與寄送條件，再以 Email 寄送專屬綠界付款連結。" : "黑貓與郵局依商品材積計費。店家會確認含運總額，再以 Email 寄送專屬綠界付款連結。"}</p>
+                </div>
+              ) : (
+                <Choices
+                  name="pay"
+                  rows={[
+                    ["綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（模擬）"],
+                    ["信用卡分期", "實際期數依綠界核准服務顯示"],
+                    ["ATM 虛擬帳號", "付款期限依綠界付款頁顯示"],
+                    ["超商代碼", "取得代碼後至合作超商繳費"],
+                    [isCvs ? "超商取貨付款" : "門市取貨付款", isCvs ? "於所選超商門市付款取貨" : "門市自取時付款"],
+                  ]}
+                />
+              )}
+              <div className="notice">
+                ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。
+              </div>
+            </>
+          )}
+          <button className="primary next" onClick={() => setStep(step + 1)}>
+            {step === 3
+              ? needsQuote
+                ? "送出報價申請"
+                : "前往綠界安全付款（模擬）"
+              : "繼續下一步"} →
+          </button>
+        </div>
+        <Summary
+          total={total || 6980}
+          shipping={shipFees[shipMethod]}
+          shippingLabel={needsQuote ? "待店家報價" : undefined}
+        />
+      </div>
+    </section>
+  );
+}
+function Checkout({
+  step,
+  setStep,
+  items,
+  total,
+  finish,
+}: {
+  step: number;
+  setStep: (n: number) => void;
+  items: P[];
+  total: number;
+  finish: () => void;
+}) {
+  if (step === 4)
+    return (
+      <section className="done">
+        <div>✓</div>
+        <p className="eyebrow purple">ORDER COMPLETE</p>
+        <h1>訂單模擬完成！</h1>
+        <p>
+          訂單編號 <b>YD260828-0186</b>
+        </p>
+        <span>
+          確認信已模擬寄送至 demo@yehda.tw
+          <br />
+          此流程未產生真實訂單或扣款。
+        </span>
+        <aside className="my-6 border border-[#ff9a3d] bg-[#fff7ed] p-5 text-left">
+          <b className="block text-sm text-[#a94f00]">需要代安裝服務嗎？</b>
+          <p className="mt-2 text-xs leading-6 text-zinc-600">
+            燁達提供專業代安裝服務。網站不接受安裝預約，請加入官方
+            LINE，傳送訂單編號、車款與商品資訊洽詢工資及時間。
+          </p>
+          <button className="mt-3 w-full bg-[#19b955] px-4 py-3 text-sm font-bold text-white">
+            加入燁達官方 LINE 洽詢　→
+          </button>
+        </aside>
+        <button className="primary" onClick={finish}>
+          返回首頁
+        </button>
+      </section>
+    );
+  return (
+    <section className="checkout">
+      <div className="checkTop">
+        <button onClick={() => step > 1 && setStep(step - 1)}>← 返回</button>
+        <b>燁達 YEHDA</b>
+        <span>安全結帳 DEMO</span>
+      </div>
+      <div className="steps">
+        {["配送資訊", "配送方式", "付款方式", "完成"].map((x, i) => (
+          <div className={step >= i + 1 ? "on" : ""} key={x}>
+            <i>{step > i + 1 ? "✓" : i + 1}</i>
+            <span>{x}</span>
+          </div>
+        ))}
+      </div>
+      <div className="checkLayout">
+        <div className="form">
+          <h2>
+            {["配送／取貨資料", "選擇配送方式", "選擇付款方式"][step - 1]}
+          </h2>
+          {step === 1 && (
+            <div className="formGrid">
+              <label>
+                收件人姓名
+                <input defaultValue="王小明" />
+              </label>
+              <label>
+                手機號碼
+                <input defaultValue="0912-345-678" />
+              </label>
+              <label className="wide">
+                電子信箱
+                <input defaultValue="demo@yehda.tw" />
+              </label>
+              <label>
+                郵遞區號
+                <input defaultValue="236" />
+              </label>
+              <label>
+                縣市
+                <select>
+                  <option>新北市</option>
+                  <option>台北市</option>
+                  <option>桃園市</option>
+                </select>
+              </label>
+              <label>
+                地區
+                <select>
+                  <option>土城區</option>
+                  <option>板橋區</option>
+                </select>
+              </label>
+              <label className="wide">
+                詳細地址
+                <input defaultValue="中華路一段 70 巷 5 號" />
+              </label>
+              <label className="wide">
+                配送備註
+                <input placeholder="例如：管理室代收、到貨前請先電話聯絡" />
+              </label>
+              <div className="wide notice">
+                以上收件資料會顯示於後台訂單管理，供店家填寫託運單與聯絡收件人。
+              </div>
+            </div>
+          )}
+          {step === 2 && <ShippingGroups />}
+          {step === 3 && (
+            <>
+              <Choices
+                name="pay"
+                rows={[
+                  ["綠界科技｜信用卡", "VISA · Mastercard · JCB（模擬）"],
+                  ["取貨付款", "門市自取時付款"],
+                  ["ATM 虛擬帳號", "付款期限 3 天"],
+                ]}
+              />
+              <div className="notice">
+                ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。
+              </div>
+            </>
+          )}
+          <button className="primary next" onClick={() => setStep(step + 1)}>
+            {step === 3 ? "確認送出模擬訂單" : "繼續下一步"} →
+          </button>
+        </div>
+        <Summary total={total || 6980} />
+      </div>
+    </section>
+  );
+}
+function ShippingGroups() {
+  return (
+    <div className="space-y-5">
+      <section className="border border-zinc-300">
+        <div className="flex items-center justify-between bg-[#17181d] px-5 py-4 text-white">
+          <div>
+            <b className="block text-sm">宅配寄送</b>
+            <span className="text-[10px] text-zinc-400">
+              配送至客人填寫的收件地址
+            </span>
+          </div>
+          <span>配送到府</span>
+        </div>
+        <Choices
+          name="ship"
+          rows={[
+            ["黑貓宅急便", "1–2 個工作天 · NT$ 120"],
+            ["中華郵政", "2–3 個工作天 · NT$ 80"],
+          ]}
+        />
+      </section>
+      <section className="border border-[#ff9a3d] bg-[#fff8f0]">
+        <div className="px-5 pt-4">
+          <b className="block text-sm">門市自取</b>
+          <span className="text-[10px] text-zinc-500">
+            商品備妥後通知取貨，不收運費
+          </span>
+        </div>
+        <Choices
+          name="ship"
+          rows={[
+            [
+              "燁達門市自取",
+              "236 新北市土城區裕生里中華路一段 70 巷 5 號 · 09:30–17:00",
+            ],
+          ]}
+        />
+      </section>
+    </div>
+  );
+}
+function Choices({ name, rows }: { name: string; rows: string[][] }) {
+  return (
+    <div className="choices">
+      {rows.map((r, i) => (
+        <label key={r[0]}>
+          <input type="radio" name={name} defaultChecked={!i} />
+          <b>{r[0]}</b>
+          <span>{r[1]}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+const focusProducts = (category: string) =>
+  ps
+    .filter((p) =>
+      category === "傳動"
+        ? ["傳動", "皮帶", "大彈簧"].includes(p.cat)
+        : p.cat === category,
+    )
+    .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)))
+    .slice(0, 4);
+function FeaturedCategories({
+  order,
+  choose,
+  fav,
+  heart,
+  detail,
+  add,
+}: {
+  order: string[];
+  choose: (c: string) => void;
+  fav: number[];
+  heart: (i: number) => void;
+  detail: (p: P) => void;
+  add: (i: number) => void;
+}) {
+  return (
+    <section className="featuredProducts">
+      <div className="featuredProductsIntro section">
+        <p className="eyebrow purple">PRIORITY CATEGORIES</p>
+        <h2>本週焦點分類</h2>
+        <p>
+          依照後台分類優先順序，展示前三項分類商品；同分類中有實品照片的商品優先。
+        </p>
+      </div>
+      {order.slice(0, 3).map((c, i) => (
+        <div className={`featuredProductSection ${i % 2 ? "alt" : ""}`} key={c}>
+          <div className="section">
+            <div className="featuredProductHead">
+              <div>
+                <span>PRIORITY 0{i + 1}</span>
+                <h3>{c}</h3>
+                <p>
+                  {i === 0 ? "本週第一優先推薦分類" : "依後台排序自動接續顯示"}
+                </p>
+              </div>
+              <button onClick={() => choose(c)}>查看全部 {c}　→</button>
+            </div>
+            <Grid
+              items={focusProducts(c)}
+              fav={fav}
+              heart={heart}
+              detail={detail}
+              add={add}
+            />
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+function CategoryManager({
+  order,
+  setOrder,
+}: {
+  order: string[];
+  setOrder: (x: string[]) => void;
+}) {
+  const [dragging, setDragging] = useState<string | null>(null);
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= order.length) return;
+    const next = [...order];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setOrder(next);
+  };
+  const drop = (target: string) => {
+    if (!dragging || dragging === target) return;
+    move(order.indexOf(dragging), order.indexOf(target));
+    setDragging(null);
+  };
+  return (
+    <div className="categoryManager">
+      <div className="categoryManagerTop">
+        <div>
+          <p>首頁分類展示順序</p>
+          <h2>拖曳調整優先順序</h2>
+          <span>
+            前三順位會依序成為首頁的三個商品區塊，每個區塊展示四項商品。
+          </span>
+        </div>
+        <b>已自動儲存</b>
+      </div>
+      <div className="categoryRows">
+        {order.map((c, i) => (
+          <article
+            key={c}
+            draggable
+            onDragStart={() => setDragging(c)}
+            onDragEnd={() => setDragging(null)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => drop(c)}
+            className={dragging === c ? "dragging" : ""}
+          >
+            <span className="dragHandle">⋮⋮</span>
+            <i>{String(i + 1).padStart(2, "0")}</i>
+            <img src={catImages[cats.slice(1).indexOf(c)]} alt="" />
+            <div>
+              <b>{c}</b>
+              <small>
+                {i < 3 ? `首頁第 ${i + 1} 商品區塊` : "暫不顯示於焦點區"}
+              </small>
+            </div>
+            {i < 3 && <em>首頁顯示</em>}
+            <div className="rowActions">
+              <button
+                onClick={() => move(i, i - 1)}
+                disabled={!i}
+                aria-label="向上移動"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => move(i, i + 1)}
+                disabled={i === order.length - 1}
+                aria-label="向下移動"
+              >
+                ↓
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="categoryPreview">
+        <b>目前首頁前三項</b>
+        <span>01 {order[0]}</span>
+        <span>02 {order[1]}</span>
+        <span>03 {order[2]}</span>
+      </div>
+    </div>
+  );
+}
+type DemoMember = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  tier: string;
+  points: number;
+  spend: number;
+  orders: number;
+  status: "正常" | "停權";
+  joined: string;
+};
+const initialMembers: DemoMember[] = [
+  {
+    id: 1,
+    name: "王小明",
+    phone: "0912345678",
+    email: "ming@example.com",
+    tier: "銀牌",
+    points: 1280,
+    spend: 28600,
+    orders: 6,
+    status: "正常",
+    joined: "2026/08/12",
+  },
+  {
+    id: 2,
+    name: "林柏宇",
+    phone: "0988520168",
+    email: "lin@example.com",
+    tier: "金牌",
+    points: 3260,
+    spend: 68800,
+    orders: 14,
+    status: "正常",
+    joined: "2026/05/20",
+  },
+  {
+    id: 3,
+    name: "許雅婷",
+    phone: "0978123456",
+    email: "ya@example.com",
+    tier: "一般",
+    points: 360,
+    spend: 9280,
+    orders: 3,
+    status: "正常",
+    joined: "2026/08/25",
+  },
+  {
+    id: 4,
+    name: "陳冠廷",
+    phone: "0935660721",
+    email: "chen@example.com",
+    tier: "一般",
+    points: 80,
+    spend: 4060,
+    orders: 1,
+    status: "停權",
+    joined: "2026/07/03",
+  },
+];
+function MembersManager() {
+  const [members, setMembers] = useState<DemoMember[]>(initialMembers),
+    [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("全部"),
+    [selectedId, setSelectedId] = useState(1),
+    [pointAmount, setPointAmount] = useState("100"),
+    [reason, setReason] = useState("店家手動調整"),
+    [logs, setLogs] = useState([
+      "王小明　購買訂單 #YD0186　+70 點",
+      "林柏宇　店家活動贈點　+500 點",
+    ]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("demo-members") || "null");
+      if (Array.isArray(saved)) setMembers(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("demo-members", JSON.stringify(members));
+  }, [members]);
+  const shown = members.filter(
+      (m) =>
+        (filter === "全部" || m.status === filter) &&
+        `${m.name}${m.phone}${m.email}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    ),
+    selected = members.find((m) => m.id === selectedId) || members[0];
+  const adjust = (direction: 1 | -1) => {
+    const amount = Math.max(0, Number(pointAmount) || 0);
+    if (!amount) return;
+    setMembers((ms) =>
+      ms.map((m) =>
+        m.id === selected.id
+          ? { ...m, points: Math.max(0, m.points + direction * amount) }
+          : m,
+      ),
+    );
+    setLogs((x) =>
+      [
+        `${selected.name}　${reason || "店家手動調整"}　${direction > 0 ? "+" : "−"}${amount} 點`,
+        ...x,
+      ].slice(0, 6),
+    );
+  };
+  const toggle = () =>
+    setMembers((ms) =>
+      ms.map((m) =>
+        m.id === selected.id
+          ? { ...m, status: m.status === "正常" ? "停權" : "正常" }
+          : m,
+      ),
+    );
+  const totalPoints = members.reduce((s, m) => s + m.points, 0);
+  return (
+    <div className="p-4 md:p-8">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <article className="bg-white p-5 shadow-sm">
+          <small className="text-zinc-400">會員總數</small>
+          <b className="mt-2 block text-2xl">{members.length}</b>
+        </article>
+        <article className="bg-white p-5 shadow-sm">
+          <small className="text-zinc-400">流通點數</small>
+          <b className="mt-2 block text-2xl text-[#654cff]">
+            {totalPoints.toLocaleString()} 點
+          </b>
+        </article>
+        <article className="bg-white p-5 shadow-sm">
+          <small className="text-zinc-400">本月新增</small>
+          <b className="mt-2 block text-2xl">+28</b>
+        </article>
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_340px]">
+        <section className="min-w-0 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="border border-zinc-300 px-4 py-3 text-xs"
+              placeholder="搜尋姓名、電話或 Email"
+            />
+            <div className="flex gap-2">
+              {["全部", "正常", "停權"].map((x) => (
+                <button
+                  key={x}
+                  onClick={() => setFilter(x)}
+                  className={`border px-3 py-2 text-xs ${filter === x ? "border-[#654cff] bg-[#efedff] text-[#654cff]" : "border-zinc-300 bg-white"}`}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+              <thead className="bg-zinc-50 text-zinc-500">
+                <tr>
+                  <th className="p-3">會員</th>
+                  <th>等級</th>
+                  <th>點數</th>
+                  <th>累積消費</th>
+                  <th>訂單</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((m) => (
+                  <tr
+                    key={m.id}
+                    onClick={() => setSelectedId(m.id)}
+                    className={`cursor-pointer border-b border-zinc-100 ${selected.id === m.id ? "bg-[#f5f3ff]" : "hover:bg-zinc-50"}`}
+                  >
+                    <td className="p-3">
+                      <b>{m.name}</b>
+                      <small className="block text-zinc-400">
+                        {m.phone} · {m.email}
+                      </small>
+                    </td>
+                    <td>{m.tier}</td>
+                    <td className="font-bold text-[#654cff]">
+                      {m.points.toLocaleString()}
+                    </td>
+                    <td>NT$ {m.spend.toLocaleString()}</td>
+                    <td>{m.orders}</td>
+                    <td>
+                      <span
+                        className={
+                          m.status === "正常"
+                            ? "text-emerald-600"
+                            : "text-red-500"
+                        }
+                      >
+                        ● {m.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="text-[#654cff]">查看</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <aside className="h-max bg-[#17181d] p-6 text-white shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <small className="text-[#9988ff]">MEMBER DETAIL</small>
+              <h2 className="mt-2 text-xl font-bold">{selected.name}</h2>
+              <span className="text-xs text-zinc-400">
+                YD-M{String(selected.id).padStart(4, "0")} · {selected.tier}會員
+              </span>
+            </div>
+            <span
+              className={`px-2 py-1 text-[9px] ${selected.status === "正常" ? "bg-emerald-900 text-emerald-300" : "bg-red-950 text-red-300"}`}
+            >
+              {selected.status}
+            </span>
+          </div>
+          <div className="my-5 border-y border-white/10 py-5">
+            <small className="text-zinc-500">目前點數</small>
+            <b className="mt-2 block text-4xl text-[#a997ff]">
+              {selected.points.toLocaleString()}{" "}
+              <i className="text-xs not-italic">點</i>
+            </b>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
+            <span>
+              手機<b className="mt-1 block text-white">{selected.phone}</b>
+            </span>
+            <span>
+              加入日期<b className="mt-1 block text-white">{selected.joined}</b>
+            </span>
+            <span>
+              訂單數
+              <b className="mt-1 block text-white">{selected.orders} 筆</b>
+            </span>
+            <span>
+              累積消費
+              <b className="mt-1 block text-white">
+                NT$ {selected.spend.toLocaleString()}
+              </b>
+            </span>
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <b className="text-xs">點數調整</b>
+            <input
+              type="number"
+              min="1"
+              value={pointAmount}
+              onChange={(e) => setPointAmount(e.target.value)}
+              className="mt-3 w-full border border-white/20 bg-white/5 px-3 py-3 text-sm text-white"
+            />
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="mt-2 w-full border border-white/20 bg-white/5 px-3 py-3 text-xs text-white"
+              placeholder="調整原因"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => adjust(1)}
+                className="bg-[#654cff] px-3 py-3 text-xs font-bold"
+              >
+                ＋ 增加點數
+              </button>
+              <button
+                onClick={() => adjust(-1)}
+                className="border border-white/25 px-3 py-3 text-xs"
+              >
+                − 扣除點數
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={toggle}
+            className={`mt-5 w-full border px-3 py-3 text-xs ${selected.status === "正常" ? "border-red-800 text-red-300" : "border-emerald-700 text-emerald-300"}`}
+          >
+            {selected.status === "正常" ? "停權此會員" : "恢復會員資格"}
+          </button>
+        </aside>
+      </div>
+      <section className="mt-5 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-bold">最近點數異動</h2>
+        <div className="mt-3 divide-y divide-zinc-100 text-xs">
+          {logs.map((x, i) => (
+            <p className="py-3" key={`${x}-${i}`}>
+              {x}
+            </p>
+          ))}
+        </div>
+      </section>
+      <p className="mt-4 text-[10px] text-zinc-500">
+        Demo：會員狀態與點數調整會保存在目前瀏覽器，正式上線後需由後端記錄每筆點數來源與操作人員。
+      </p>
+    </div>
+  );
+}
+function MembersManagerV2() {
+  const [members, setMembers] = useState<DemoMember[]>(initialMembers),
+    [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("全部"),
+    [selectedId, setSelectedId] = useState(1),
+    [pointAmount, setPointAmount] = useState("100"),
+    [reason, setReason] = useState("店家手動調整"),
+    [logs, setLogs] = useState([
+      "王小明｜購買訂單 #YD0186｜+70 點",
+      "林柏宇｜店家活動贈點｜+500 點",
+    ]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("demo-members") || "null");
+      if (Array.isArray(saved)) setMembers(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("demo-members", JSON.stringify(members));
+  }, [members]);
+  const shown = members.filter(
+    (m) =>
+      (filter === "全部" || m.status === filter) &&
+      `${m.name}${m.phone}${m.email}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+  );
+  const selected = members.find((m) => m.id === selectedId) || members[0];
+  const adjust = (direction: 1 | -1) => {
+    const amount = Math.max(0, Number(pointAmount) || 0);
+    if (!amount) return;
+    setMembers((ms) =>
+      ms.map((m) =>
+        m.id === selected.id
+          ? { ...m, points: Math.max(0, m.points + direction * amount) }
+          : m,
+      ),
+    );
+    setLogs((x) =>
+      [
+        `${selected.name}｜${reason || "店家手動調整"}｜${direction > 0 ? "+" : "−"}${amount} 點`,
+        ...x,
+      ].slice(0, 6),
+    );
+  };
+  const toggle = () =>
+    setMembers((ms) =>
+      ms.map((m) =>
+        m.id === selected.id
+          ? { ...m, status: m.status === "正常" ? "停權" : "正常" }
+          : m,
+      ),
+    );
+  const totalPoints = members.reduce((s, m) => s + m.points, 0),
+    activeMembers = members.filter((m) => m.status === "正常").length;
+  return (
+    <div className="membersManagerV2">
+      <section className="memberStats" aria-label="會員統計">
+        <article>
+          <span>01</span>
+          <div>
+            <small>會員總數</small>
+            <b>{members.length}</b>
+            <em>{activeMembers} 位正常使用</em>
+          </div>
+        </article>
+        <article>
+          <span>02</span>
+          <div>
+            <small>流通點數</small>
+            <b>
+              {totalPoints.toLocaleString()} <i>點</i>
+            </b>
+            <em>待會員折抵使用</em>
+          </div>
+        </article>
+        <article>
+          <span>03</span>
+          <div>
+            <small>本月新增</small>
+            <b>+28</b>
+            <em>較上月增加 12%</em>
+          </div>
+        </article>
+      </section>
+      <div className="memberWorkspace">
+        <section className="memberDirectory">
+          <div className="memberDirectoryHead">
+            <div>
+              <p>MEMBER DIRECTORY</p>
+              <h2>會員名單</h2>
+              <span>點選會員可查看資料與調整點數</span>
+            </div>
+            <b>{shown.length} 位會員</b>
+          </div>
+          <div className="memberTools">
+            <label>
+              <span>⌕</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜尋姓名、電話或 Email"
+                aria-label="搜尋會員"
+              />
+            </label>
+            <div>
+              {["全部", "正常", "停權"].map((x) => (
+                <button
+                  key={x}
+                  onClick={() => setFilter(x)}
+                  className={filter === x ? "active" : ""}
+                >
+                  {x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="memberTableWrap">
+            <table className="memberTable">
+              <thead>
+                <tr>
+                  <th>會員資料</th>
+                  <th>等級</th>
+                  <th>可用點數</th>
+                  <th>累積消費</th>
+                  <th>訂單</th>
+                  <th>狀態</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((m) => (
+                  <tr
+                    key={m.id}
+                    className={selected.id === m.id ? "selected" : ""}
+                    onClick={() => setSelectedId(m.id)}
+                  >
+                    <td>
+                      <span className="memberAvatar">{m.name.slice(0, 1)}</span>
+                      <div>
+                        <b>{m.name}</b>
+                        <small>
+                          {m.phone}
+                          <br />
+                          {m.email}
+                        </small>
+                      </div>
+                    </td>
+                    <td>
+                      <em className={`tier tier${m.tier}`}>{m.tier}</em>
+                    </td>
+                    <td>
+                      <strong>{m.points.toLocaleString()} 點</strong>
+                    </td>
+                    <td>NT$ {m.spend.toLocaleString()}</td>
+                    <td>{m.orders} 筆</td>
+                    <td>
+                      <span
+                        className={`memberStatus ${m.status === "正常" ? "ok" : "paused"}`}
+                      >
+                        ● {m.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedId(m.id);
+                        }}
+                        aria-label={`查看 ${m.name}`}
+                      >
+                        →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="memberCards">
+            {shown.map((m) => (
+              <button
+                key={m.id}
+                className={selected.id === m.id ? "selected" : ""}
+                onClick={() => setSelectedId(m.id)}
+              >
+                <span className="memberAvatar">{m.name.slice(0, 1)}</span>
+                <div>
+                  <b>{m.name}</b>
+                  <small>
+                    {m.phone}
+                    <br />
+                    {m.email}
+                  </small>
+                </div>
+                <strong>{m.points.toLocaleString()} 點</strong>
+                <em
+                  className={`memberStatus ${m.status === "正常" ? "ok" : "paused"}`}
+                >
+                  ● {m.status}
+                </em>
+                <i>→</i>
+              </button>
+            ))}
+          </div>
+          {!shown.length && (
+            <div className="memberEmpty">找不到符合條件的會員</div>
+          )}
+        </section>
+        <aside className="memberDetailPanel">
+          <div className="memberDetailTop">
+            <div>
+              <p>SELECTED MEMBER</p>
+              <h2>{selected.name}</h2>
+              <span>
+                YD-M{String(selected.id).padStart(4, "0")} · {selected.tier}會員
+              </span>
+            </div>
+            <em
+              className={`memberStatus ${selected.status === "正常" ? "ok" : "paused"}`}
+            >
+              {selected.status}
+            </em>
+          </div>
+          <div className="memberPointHero">
+            <small>目前可用點數</small>
+            <b>
+              {selected.points.toLocaleString()} <i>點</i>
+            </b>
+            <span>100 點可折抵 NT$100</span>
+          </div>
+          <dl className="memberFacts">
+            <div>
+              <dt>手機</dt>
+              <dd>{selected.phone}</dd>
+            </div>
+            <div>
+              <dt>加入日期</dt>
+              <dd>{selected.joined}</dd>
+            </div>
+            <div>
+              <dt>電子信箱</dt>
+              <dd>{selected.email}</dd>
+            </div>
+            <div>
+              <dt>訂單／消費</dt>
+              <dd>
+                {selected.orders} 筆 · NT$ {selected.spend.toLocaleString()}
+              </dd>
+            </div>
+          </dl>
+          <div className="pointEditor">
+            <div>
+              <b>點數調整</b>
+              <small>每次異動都需要填寫原因</small>
+            </div>
+            <label>
+              調整點數
+              <input
+                type="number"
+                min="1"
+                value={pointAmount}
+                onChange={(e) => setPointAmount(e.target.value)}
+              />
+            </label>
+            <label>
+              調整原因
+              <input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="例如：活動贈點"
+              />
+            </label>
+            <div>
+              <button onClick={() => adjust(1)}>＋ 增加點數</button>
+              <button onClick={() => adjust(-1)}>− 扣除點數</button>
+            </div>
+          </div>
+          <button
+            onClick={toggle}
+            className={`memberAccess ${selected.status === "正常" ? "danger" : "restore"}`}
+          >
+            {selected.status === "正常" ? "停權此會員" : "恢復會員資格"}
+          </button>
+        </aside>
+      </div>
+      <section className="pointActivity">
+        <div>
+          <p>POINT ACTIVITY</p>
+          <h2>最近點數異動</h2>
+        </div>
+        <div>
+          {logs.map((x, i) => {
+            const [name, desc, points] = x.split("｜");
+            return (
+              <article key={`${x}-${i}`}>
+                <span>{name.slice(0, 1)}</span>
+                <div>
+                  <b>{name}</b>
+                  <small>{desc}</small>
+                </div>
+                <strong className={points?.includes("−") ? "minus" : ""}>
+                  {points}
+                </strong>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <p className="memberDemoNote">
+        Demo：會員狀態與點數調整會保存在目前瀏覽器；正式上線後需由後端記錄每筆點數來源、時間與操作人員。
+      </p>
+    </div>
+  );
+}
+const tabs = [
+  "數據總覽",
+  "商品管理",
+  "分類管理",
+  "品牌管理",
+  "車種資料庫",
+  "訂單管理",
+  "退貨管理",
+  "會員管理",
+];
+function Admin({
+  tab,
+  setTab,
+  back,
+  categoryOrder,
+  setCategoryOrder,
+}: {
+  tab: string;
+  setTab: (s: string) => void;
+  back: () => void;
+  categoryOrder: string[];
+  setCategoryOrder: (x: string[]) => void;
+}) {
+  const [productEditor, setProductEditor] = useState(false);
+  return (
+    <div className="admin">
+      <aside>
+        <div className="adminLogo">
+          <b>燁達</b>
+          <span>STORE ADMIN</span>
+        </div>
+        <nav>
+          {tabs.map((x, i) => (
+            <button
+              className={tab === x ? "active" : ""}
+              onClick={() => {
+                setTab(x);
+                setProductEditor(false);
+              }}
+              key={x}
+            >
+              <i>{["⌁", "□", "▦", "◆", "⌖", "▤", "↩", "♙"][i]}</i>
+              {x}
+              {x === "訂單管理" && <em>8</em>}
+            </button>
+          ))}
+        </nav>
+        <button className="store" onClick={back}>
+          ← 返回前台商城
+        </button>
+      </aside>
+      <main>
+        <header>
+          <div>
+            <p>燁達機車精品 / {tab}</p>
+            <h1>{tab}</h1>
+          </div>
+          <div>
+            <button>⌕</button>
+            <button>
+              ♢<i>3</i>
+            </button>
+            <span>YD</span>
+            <b>
+              管理員<small>admin@yehda.tw</small>
+            </b>
+          </div>
+        </header>
+        {tab === "商品管理" && productEditor ? (
+          <ProductEditor back={() => setProductEditor(false)} />
+        ) : tab === "數據總覽" ? (
+          <Dashboard />
+        ) : tab === "分類管理" ? (
+          <CategoryManager order={categoryOrder} setOrder={setCategoryOrder} />
+        ) : tab === "訂單管理" ? (
+          <OrdersManager />
+        ) : tab === "會員管理" ? (
+          <MembersManagerV2 />
+        ) : (
+          <AdminTable
+            tab={tab}
+            add={tab === "商品管理" ? () => setProductEditor(true) : undefined}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+function Dashboard() {
+  return (
+    <div className="dashboard">
+      <div className="date">
+        <span>最後更新：今天 23:48</span>
+        <button>近 30 天⌄</button>
+        <button className="adminPrimary">＋ 新增商品</button>
+      </div>
+      <div className="kpis">
+        {[
+          ["本月營業額", "NT$ 486,820", "↑ 12.8%"],
+          ["本月訂單", "186", "↑ 8.4%"],
+          ["平均客單價", "NT$ 2,617", "↑ 3.1%"],
+          ["待處理訂單", "8", "需處理"],
+        ].map((x, i) => (
+          <article key={x[0]}>
+            <span>{["＄", "▤", "↗", "！"][i]}</span>
+            <small>{x[0]}</small>
+            <b>{x[1]}</b>
+            <em>{x[2]}</em>
+          </article>
+        ))}
+      </div>
+      <div className="dashGrid">
+        <section className="chart">
+          <h2>
+            營業額趨勢 <small>近 7 日</small>
+          </h2>
+          <div>
+            {[34, 48, 40, 64, 58, 82, 72].map((n, i) => (
+              <i key={i} style={{ height: n + "%" }} />
+            ))}
+          </div>
+          <p>
+            <span>08/22</span>
+            <span>08/23</span>
+            <span>08/24</span>
+            <span>08/25</span>
+            <span>08/26</span>
+            <span>08/27</span>
+            <span>今天</span>
+          </p>
+        </section>
+        <section className="orders">
+          <h2>
+            最新訂單 <button>查看全部 →</button>
+          </h2>
+          {[
+            ["#YD0186", "王小明", "NT$ 6,980", "待出貨"],
+            ["#YD0185", "林柏宇", "NT$ 12,800", "已付款"],
+            ["#YD0184", "陳冠廷", "NT$ 4,060", "處理中"],
+            ["#YD0183", "張家豪", "NT$ 16,800", "已完成"],
+          ].map((x) => (
+            <p key={x[0]}>
+              <b>{x[0]}</b>
+              <span>{x[1]}</span>
+              <strong>{x[2]}</strong>
+              <em>{x[3]}</em>
+            </p>
+          ))}
+        </section>
+      </div>
+      <section className="quick quickWide">
+        <h2>快速操作</h2>
+        <div>
+          {[
+            "新增商品",
+            "建立訂單",
+            "新增車種",
+            "更新首頁",
+            "匯出報表",
+            "網站設定",
+          ].map((x) => (
+            <button key={x}>
+              ＋<span>{x}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+function OrdersManager() {
+  const [query, setQuery] = useState("");
+  const orders = [
+    {
+      id: "#YD0187",
+      name: "許雅婷",
+      phone: "0978123456",
+      method: "全家便利商店取貨",
+      location:
+        "全家土城中華店｜店號 020599｜新北市土城區中華路一段 70 號｜02-2260-0000",
+      note: "綠界門市電子地圖回傳",
+      total: "NT$ 3,280",
+      status: "已付款／待出貨",
+    },
+    {
+      id: "#YD0186",
+      name: "王小明",
+      phone: "0912345678",
+      method: "黑貓宅急便",
+      location: "236 新北市土城區中華路一段 70 巷 5 號",
+      note: "管理室代收",
+      total: "商品 NT$ 6,980／運費待報價",
+      status: "待報價",
+    },
+    {
+      id: "#YD0185",
+      name: "林柏宇",
+      phone: "0988520168",
+      method: "中華郵政",
+      location: "220 新北市板橋區文化路一段 168 號",
+      note: "到貨前請先聯絡",
+      total: "含運 NT$ 12,880",
+      status: "報價完成／待付款",
+    },
+    {
+      id: "#YD0184",
+      name: "陳冠廷",
+      phone: "0935660721",
+      method: "燁達門市自取",
+      location: "236 新北市土城區裕生里中華路一段 70 巷 5 號",
+      note: "備妥後電話通知",
+      total: "NT$ 4,060",
+      status: "待取貨",
+    },
+    {
+      id: "#YD0183",
+      name: "Alex Chen",
+      phone: "+81 90-1234-5678",
+      method: "海外人工配送",
+      location: "Tokyo 150-0001, Japan",
+      note: "待確認國際運費與關稅說明",
+      total: "商品 NT$ 16,800／運費待報價",
+      status: "海外詢價",
+    },
+  ];
+  const shown = orders.filter((o) =>
+    `${o.id}${o.name}${o.phone}${o.method}`
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+  return (
+    <div className="ordersManager">
+      <div className="ordersToolbar">
+        <div>
+          <p>DELIVERY INFORMATION</p>
+          <h2>訂單配送資料</h2>
+          <span>集中查看宅配、超商取貨與門市自取資訊</span>
+        </div>
+        <label>
+          <span>⌕</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜尋訂單、姓名或電話"
+          />
+        </label>
+      </div>
+      <div className="ordersList">
+        {shown.map((o, i) => (
+          <details key={o.id} open={!i} className="orderItem">
+            <summary className="orderSummary">
+              <div className="orderPrimary">
+                <b>{o.id}</b>
+                <em>{o.status}</em>
+              </div>
+              <div className="orderCustomer">
+                <b>{o.name}</b>
+                <small>{o.phone}</small>
+              </div>
+              <strong className="orderShipping">{o.method}</strong>
+              <b className="orderTotal">{o.total}</b>
+              <i className="orderToggle">＋</i>
+            </summary>
+            <div className="orderDetails">
+              <div>
+                <small>收件／取貨人資料</small>
+                <b>
+                  {o.name}　{o.phone}
+                </b>
+                <span>demo@yehda.tw</span>
+              </div>
+              <div>
+                <small>配送／取貨地點</small>
+                <b>{o.location}</b>
+                <span>備註：{o.note}</span>
+              </div>
+              <div>
+                <small>店家操作</small>
+                <div className="orderActions">
+                  <button>{o.status.includes("報價") || o.status.includes("詢價") ? "填寫運費與含運總額" : "列印寄件資料"}</button>
+                  <button>{o.status.includes("待付款") ? "建立綠界付款連結" : "填入物流單號"}</button>
+                </div>
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+      {!shown.length && <div className="ordersEmpty">找不到符合的訂單資料</div>}
+      <p className="ordersNote">
+        Demo
+        顯示：宅配會保留完整地址；超商取貨會保留門市店號、名稱、地址與電話；門市自取不收集住家地址。
+      </p>
+    </div>
+  );
+}
+function ProductEditor({ back }: { back: () => void }) {
+  const [shipping, setShipping] = useState("small");
+  const [cod, setCod] = useState(true);
+  const [preview, setPreview] = useState("");
+  const [saved, setSaved] = useState("");
+  const shippingCopy: Record<string, { title: string; methods: string; note: string }> = {
+    small: {
+      title: "小型／超商配送",
+      methods: "7-ELEVEN、全家、萊爾富、黑貓、郵局、門市自取",
+      note: "適合握把、煞車皮與一般小型零件",
+    },
+    home: {
+      title: "一般／宅配配送",
+      methods: "黑貓、郵局、門市自取",
+      note: "適合安全帽、傳動套件與無法超商交寄的商品",
+    },
+    quote: {
+      title: "大型或特殊商品",
+      methods: "門市自取，或送出訂單後由店家報價",
+      note: "適合大型、易碎、超重或不規則商品",
+    },
+  };
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaved("商品已模擬上架；物流規則已套用。正式版將寫入資料庫。");
+    scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return (
+    <form onSubmit={submit} className="productEditor">
+      <div className="productEditorTop">
+        <div>
+          <button type="button" onClick={back}>← 返回商品列表</button>
+          <p>NEW PRODUCT</p>
+          <h2>新增商品</h2>
+          <span>建立商品內容並選擇最適合的配送類型</span>
+        </div>
+        <div>
+          <button type="button" onClick={() => setSaved("草稿已暫存在目前頁面。")}>儲存草稿</button>
+          <button type="submit">儲存並上架</button>
+        </div>
+      </div>
+      {saved && <div className="productEditorSaved" role="status">✓ {saved}</div>}
+      <div className="productEditorGrid">
+        <div className="productEditorMain">
+          <section>
+            <div className="editorHeading"><span>01</span><div><b>基本資訊</b><small>顧客會在商品頁看到這些內容</small></div></div>
+            <div className="editorFields">
+              <label className="wide">商品名稱<input required placeholder="例如：MALOSSI RS24 後避震器" /></label>
+              <label>商品分類<select required defaultValue=""><option value="" disabled>選擇分類</option>{cats.slice(1).map((x) => <option key={x}>{x}</option>)}</select></label>
+              <label>品牌<select required defaultValue=""><option value="" disabled>選擇品牌</option><option>POLINI</option><option>MALOSSI</option><option>BMC</option><option>SHOEI</option><option>YEHDA</option></select></label>
+              <label>售價（NT$）<input required min="0" type="number" placeholder="0" /></label>
+              <label>庫存數量<input required min="0" type="number" placeholder="0" /></label>
+              <label>商品編號（選填）<input placeholder="YD-0001" /></label>
+              <label>上架狀態<select><option>立即上架</option><option>儲存為草稿</option><option>缺貨但保留頁面</option></select></label>
+              <label className="wide">商品簡介<textarea rows={5} placeholder="商品特色、適用車種與注意事項" /></label>
+            </div>
+          </section>
+          <section>
+            <div className="editorHeading"><span>02</span><div><b>配送類型</b><small>只要選一項，結帳系統會自動套用規則</small></div></div>
+            <div className="shippingPresetGrid">
+              {Object.entries(shippingCopy).map(([key, item]) => (
+                <label className={shipping === key ? "selected" : ""} key={key}>
+                  <input type="radio" name="shipping" checked={shipping === key} onChange={() => { setShipping(key); if (key === "quote") setCod(false); }} />
+                  <span>{key === "small" ? "S" : key === "home" ? "M" : "XL"}</span>
+                  <b>{item.title}</b><small>{item.note}</small>
+                </label>
+              ))}
+            </div>
+            <div className="shippingResult">
+              <div><small>系統將開放</small><b>{shippingCopy[shipping].methods}</b></div>
+              <label><input type="checkbox" checked={cod} disabled={shipping === "quote"} onChange={(e) => setCod(e.target.checked)} /> 允許貨到付款</label>
+            </div>
+          </section>
+        </div>
+        <aside className="productEditorAside">
+          <section>
+            <div className="editorHeading"><span>03</span><div><b>商品圖片</b><small>建議使用清楚的實品照片</small></div></div>
+            <label className="imageUploader">
+              {preview ? <img src={preview} alt="商品圖片預覽" /> : <><strong>＋</strong><b>上傳商品主圖</b><small>JPG、PNG · 建議正方形</small></>}
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPreview(URL.createObjectURL(file)); }} />
+            </label>
+            {preview && <button type="button" className="replaceImage" onClick={() => setPreview("")}>移除並重新選擇</button>}
+          </section>
+          <section className="publishChecklist">
+            <b>上架前確認</b>
+            <span>✓ 已填寫商品名稱與價格</span>
+            <span>✓ 已選擇配送類型</span>
+            <span>✓ 已確認庫存與付款方式</span>
+            <p>正式版本會依物流類型，自動限制顧客結帳時可選擇的配送方式。</p>
+          </section>
+        </aside>
+      </div>
+    </form>
+  );
+}
+
+function AdminTable({ tab, add }: { tab: string; add?: () => void }) {
+  return (
+    <div className="adminTable">
+      <div className="listTools">
+        <div>
+          <button className="active">全部</button>
+          <button>上架中</button>
+        </div>
+        <div>
+          <input placeholder={`搜尋${tab}…`} />
+          <button className="adminPrimary" onClick={add}>＋ 新增項目</button>
+        </div>
+      </div>
+      <section>
+        <table>
+          <thead>
+            <tr>
+              <th>□</th>
+              <th>項目名稱</th>
+              <th>狀態</th>
+              <th>售價／日期</th>
+              <th>庫存／資料</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ps.map((p, i) => (
+              <tr key={p.id}>
+                <td>□</td>
+                <td>
+                  <i className={`tableImg ${p.color}`}>{p.brand[0]}</i>
+                  <b>
+                    {tab === "商品管理"
+                      ? p.name
+                      : `${tab.replace("管理", "")}項目 ${i + 1}`}
+                    <small>
+                      {p.brand} · YD-00{p.id}
+                    </small>
+                  </b>
+                </td>
+                <td>
+                  <span className="status">● 上架中</span>
+                </td>
+                <td>{nt(p.price)}</td>
+                <td>{12 - i} 件</td>
+                <td>
+                  <button>編輯</button>
+                  <button>•••</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <p className="pagination">
+        顯示 1–6，共 186 筆　　‹　<b>1</b>　2　3　…　31　›
+      </p>
+    </div>
+  );
+}

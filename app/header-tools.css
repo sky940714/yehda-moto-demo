@@ -1,0 +1,221 @@
+.logo {
+  width: 190px;
+  height: 68px;
+  padding: 3px 0;
+}
+
+.logo img {
+  object-fit: contain;
+  object-position: center;
+}
+
+.navIcon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.toolAction,
+.memberBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.cartButton {
+  min-width: 82px !important;
+  padding: 8px 10px;
+}
+
+.toolLabel,
+.memberLabel {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.mobileNav .navIcon {
+  width: 19px;
+  height: 19px;
+}
+
+footer {
+  grid-template-columns: 1.7fr repeat(4, 1fr);
+}
+
+.footerContact a {
+  color: #d5d6dc;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.footerContact a:hover {
+  color: #ff942f;
+}
+
+.footerContact .contactNote {
+  display: block;
+  color: #777b85;
+  border: 0;
+  margin: -5px 0 12px;
+  padding: 0;
+  font-size: 9px;
+}
+
+.ownerStory {
+  max-width: 1180px;
+  margin: 90px auto 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+  min-height: 430px;
+  background: #101116;
+  color: #fff;
+  border: 1px solid #2a2c34;
+  box-shadow: 0 26px 70px #17182920;
+  overflow: hidden;
+}
+
+.ownerStoryCopy {
+  position: relative;
+  padding: 62px 52px;
+  background:
+    linear-gradient(135deg, #ff790014, transparent 42%),
+    linear-gradient(145deg, #171820, #0d0e12);
+}
+
+.ownerStoryCopy::after {
+  content: "YADA";
+  position: absolute;
+  right: 22px;
+  bottom: 4px;
+  font-size: 82px;
+  font-weight: 900;
+  color: #ffffff07;
+  pointer-events: none;
+}
+
+.ownerStoryCopy .eyebrow {
+  color: #ff902d;
+}
+
+.ownerStoryCopy h2 {
+  margin: 24px 0 8px;
+  font-size: clamp(38px, 4vw, 58px);
+  letter-spacing: -2px;
+}
+
+.ownerStoryCopy strong {
+  color: #d8d9df;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.ownerRole {
+  display: inline-block;
+  margin: 24px 0 18px;
+  padding: 7px 12px;
+  color: #ff9b40;
+  border: 1px solid #ff790066;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.ownerServices {
+  position: relative;
+  z-index: 1;
+  color: #b7b9c2;
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.ownerServices p {
+  margin: 10px 0;
+}
+
+.ownerVideo {
+  position: relative;
+  min-height: 430px;
+  background: #050506;
+}
+
+.ownerVideo::before {
+  content: "FEATURED VIDEO";
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  z-index: 2;
+  padding: 6px 10px;
+  background: #ff7900;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.ownerVideo iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .logo {
+    width: 145px;
+    height: 58px;
+  }
+
+  .cartButton {
+    min-width: 40px !important;
+    padding: 0;
+  }
+
+  .toolLabel,
+  .memberLabel {
+    display: none;
+  }
+
+  footer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ownerStory {
+    margin: 60px 5vw 0;
+    grid-template-columns: 1fr;
+  }
+
+  .ownerStoryCopy {
+    padding: 46px 36px;
+  }
+
+  .ownerVideo {
+    min-height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (max-width: 600px) {
+  .logo {
+    width: 125px;
+    height: 52px;
+  }
+
+  footer {
+    grid-template-columns: 1fr;
+  }
+
+  .ownerStory {
+    margin: 42px 14px 0;
+  }
+
+  .ownerStoryCopy {
+    padding: 36px 24px;
+  }
+}

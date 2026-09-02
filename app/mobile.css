@@ -26,7 +26,8 @@
  .logo{width:132px;height:54px;flex:0 0 auto}
  .tools{gap:1px}
  .tools>button{min-width:36px;height:40px;font-size:12px}
- .tools>button:first-child,.tools .adminBtn{display:none}
+ .tools>button:nth-child(2),.tools .adminBtn{display:none}
+ .tools .languageSwitch{display:grid;min-width:36px;height:34px;padding:0}
  .tools .memberBtn{min-width:36px!important;border:0!important;padding:0!important}
  .memberLabel{display:none}
  .tools i{right:0;top:-3px}
