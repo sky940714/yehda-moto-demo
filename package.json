@@ -13,6 +13,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "mysql2": "^3.24.3",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"

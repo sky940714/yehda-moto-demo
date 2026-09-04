@@ -539,6 +539,19 @@ const cats = [
   "空濾",
   "皮帶",
 ];
+const categoryEnglish: Record<string, string> = {
+  全部商品: "All Products",
+  風鏡: "Windscreens",
+  傳動: "Transmission",
+  前後避震: "Suspension",
+  碟盤: "Brake Discs",
+  煞車皮: "Brake Pads",
+  安全帽: "Helmets",
+  握把: "Grips",
+  大彈簧: "Contra Springs",
+  空濾: "Air Filters",
+  皮帶: "Drive Belts",
+};
 const vehicleModels: Record<string, string[]> = {
   HONDA: [
     "FORZA 350",
@@ -591,6 +604,8 @@ export default function App() {
     [tab, setTab] = useState("數據總覽"),
     [toast, setToast] = useState(""),
     [memberLoggedIn, setMemberLoggedIn] = useState(false),
+    [memberName, setMemberName] = useState("會員"),
+    [authToken, setAuthToken] = useState(""),
     [postLoginPage, setPostLoginPage] = useState("account"),
     [categoryOrder, setCategoryOrder] = useState(cats.slice(1)),
     [lang, setLang] = useState<"zh" | "en">("zh");
@@ -600,7 +615,6 @@ export default function App() {
     try {
       setCart(JSON.parse(localStorage.getItem("cart") || "[]"));
       setFav(JSON.parse(localStorage.getItem("fav") || "[]"));
-      setMemberLoggedIn(localStorage.getItem("member-session") === "active");
       setLang(localStorage.getItem("site-language") === "en" ? "en" : "zh");
       const saved = JSON.parse(
         localStorage.getItem("category-order") || "null",
@@ -608,15 +622,28 @@ export default function App() {
       if (Array.isArray(saved) && saved.length === cats.length - 1)
         setCategoryOrder(saved);
     } catch {}
+    fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string } }>).then(({ user }) => {
+      setMemberLoggedIn(Boolean(user));
+      if (user?.name) setMemberName(user.name);
+    }).catch(() => {});
+    const params = new URLSearchParams(location.search);
+    const action = params.get("auth"), token = params.get("token") || "";
+    if (action === "verify" && token) {
+      fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify", token }) })
+        .then(async (r) => { const data=await r.json() as { error?:string; message:string }; if(!r.ok) throw new Error(data.error); setToast(data.message); go("login"); history.replaceState({}, "", "/"); })
+        .catch((e) => setToast(e.message));
+    } else if (action === "reset" && token) { setAuthToken(token); setPage("reset"); }
+    else if (action === "phone") { setPage("phone"); history.replaceState({}, "", "/"); }
+    else if (action === "complete") { setMemberLoggedIn(true); setPage("account"); history.replaceState({}, "", "/"); }
+    else if (params.get("authError")) { setToast("Google 登入失敗，請重新嘗試。"); setPage("login"); history.replaceState({}, "", "/"); }
   }, []);
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
     localStorage.setItem("fav", JSON.stringify(fav));
     localStorage.setItem("category-order", JSON.stringify(categoryOrder));
-    localStorage.setItem("member-session", memberLoggedIn ? "active" : "");
     localStorage.setItem("site-language", lang);
     document.documentElement.lang = lang === "zh" ? "zh-Hant" : "en";
-  }, [cart, fav, categoryOrder, memberLoggedIn, lang]);
+  }, [cart, fav, categoryOrder, lang]);
   const go = (x: string) => {
       setPage(x);
       scrollTo({ top: 0, behavior: "smooth" });
@@ -734,7 +761,7 @@ export default function App() {
             <UserIcon />
             <span className="memberLabel">
               {memberLoggedIn
-                ? tx("王小明", "Member")
+                ? tx(memberName, memberName)
                 : tx("登入／註冊", "SIGN IN")}
             </span>
           </button>
@@ -851,6 +878,7 @@ export default function App() {
               </div>
             </section>
             <FeaturedCategories
+              tx={tx}
               order={categoryOrder}
               fav={fav}
               heart={heart}
@@ -892,8 +920,8 @@ export default function App() {
               </div>
               <button onClick={() => go("wish")}>{tx("前往預購／許願專區", "OPEN PRE-ORDER / WISH PAGE")} →</button>
             </section>
-            <BrandShowcase go={() => go("brands")} />
-            <FAQ />
+            <BrandShowcase go={() => go("brands")} tx={tx} />
+            <FAQ tx={tx} />
           </>
         )}
         {page === "products" && (
@@ -1045,35 +1073,25 @@ export default function App() {
           </section>
         )}
         {page === "login" && (
-          <MemberAuthV2
-            mode="login"
-            switchMode={() => go("register")}
-            success={() => {
-              setMemberLoggedIn(true);
-              setToast("登入成功");
-              go(postLoginPage);
-              setPostLoginPage("account");
-            }}
-          />
+          <SocialAuth />
         )}
         {page === "register" && (
-          <MemberAuthV2
-            mode="register"
-            switchMode={() => go("login")}
-            success={() => {
-              setMemberLoggedIn(true);
-              setToast("註冊完成，已獲得 100 點迎新點數");
-              go(postLoginPage);
-              setPostLoginPage("account");
-            }}
-          />
+          <SocialAuth />
         )}
+        {page === "phone" && <PhoneOnboarding complete={(user)=>{setMemberName(user.name);setMemberLoggedIn(true);setToast("會員資料完成");go(postLoginPage);setPostLoginPage("account");}} />}
+        {page === "reset" && <PasswordReset token={authToken} done={() => { history.replaceState({}, "", "/"); go("login"); }} />}
         {page === "account" && (
           <MemberCenter
-            logout={() => {
+            name={memberName}
+            logout={async () => {
+              await fetch("/api/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"logout"}) });
               setMemberLoggedIn(false);
               setToast("已登出會員");
               go("home");
+            }}
+            logoutAll={async () => {
+              await fetch("/api/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"logoutAll"}) });
+              setMemberLoggedIn(false); setToast("所有裝置都已登出"); go("home");
             }}
             shop={() => go("products")}
           />
@@ -1395,6 +1413,25 @@ function CartV2({
     </section>
   );
 }
+function SocialAuth(){
+  return <section className="authV2 min-h-[680px] bg-[#0d0e12] px-4 py-12 text-white"><div className="mx-auto grid max-w-[920px] overflow-hidden border border-white/10 bg-[#17191f] lg:grid-cols-2">
+    <aside className="relative bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-8 lg:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YADA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">快速登入<br/>開始你的升級旅程</h1><p className="mt-5 text-xs leading-6 text-zinc-300">使用熟悉的社群帳號安全登入；我們不會取得你的 Google 或 Facebook 密碼。</p></aside>
+    <div className="bg-white p-7 text-[#17181d] lg:p-12"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">MEMBER SIGN IN</p><h2 className="mt-3 text-3xl font-black">登入／建立會員</h2><p className="mt-3 text-xs leading-6 text-zinc-500">首次登入後需補填手機號碼，作為訂單與取貨聯絡使用。</p>
+      <a href="/api/auth/google" className="mt-8 flex min-h-14 items-center justify-center border border-zinc-300 bg-white px-5 text-sm font-bold text-[#17181d] hover:border-[#654cff]">使用 Google 繼續</a>
+      <button disabled className="mt-3 min-h-14 w-full border border-zinc-200 bg-zinc-100 px-5 text-sm font-bold text-zinc-400">使用 Facebook 繼續（下一步設定）</button>
+      <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。會員帳號會依社群平台已驗證的 Email 自動合併。</p>
+    </div>
+  </div></section>;
+}
+
+function PhoneOnboarding({complete}:{complete:(user:{name:string})=>void}){
+  const [error,setError]=useState(""),[busy,setBusy]=useState(false);
+  return <section className="min-h-[620px] bg-[#0d0e12] px-4 py-20 text-white"><form className="mx-auto max-w-md bg-white p-8 text-[#17181d]" onSubmit={async(e)=>{e.preventDefault();setBusy(true);setError("");const d=new FormData(e.currentTarget);const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'phone',phone:d.get('phone')})});const result=await r.json() as {error?:string;user?:{name:string}};setBusy(false);if(!r.ok||!result.user)setError(result.error||'儲存失敗。');else complete(result.user);}}>
+    <p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">ONE LAST STEP</p><h1 className="mt-3 text-3xl font-black">完成會員資料</h1><p className="mt-3 text-xs leading-6 text-zinc-500">手機號碼為必填且不可重複，目前不會發送簡訊驗證碼。</p>{error&&<div className="mt-5 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
+    <label className="mt-7 block text-xs font-bold">手機號碼<input name="phone" inputMode="tel" autoComplete="tel" pattern="09[0-9]{8}" required className="mt-2 min-h-12 w-full border border-zinc-300 px-4" placeholder="0912345678"/></label><button disabled={busy} className="mt-6 min-h-12 w-full bg-[#654cff] font-bold text-white">{busy?'儲存中…':'完成並進入會員中心'}</button>
+  </form></section>;
+}
+
 function MemberAuthV2({
   mode,
   switchMode,
@@ -1402,21 +1439,42 @@ function MemberAuthV2({
 }: {
   mode: "login" | "register";
   switchMode: () => void;
-  success: () => void;
+  success: (user: { name: string }) => void;
 }) {
   const register = mode === "register",
     [showPassword, setShowPassword] = useState(false),
     [password, setPassword] = useState(""),
-    [error, setError] = useState("");
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(false),
+    [forgot, setForgot] = useState(false);
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    setError(""); setNotice("");
     const data = new FormData(e.currentTarget);
     if (register && data.get("password") !== data.get("confirm")) {
       setError("兩次輸入的密碼不一致，請重新確認。");
       return;
     }
-    success();
+    setBusy(true);
+    try {
+      const body = register
+        ? { action:"register", name:data.get("name"), phone:data.get("identifier"), email:data.get("email"), password:data.get("password") }
+        : { action:"login", identifier:data.get("identifier"), password:data.get("password"), remember:data.get("remember") === "on" };
+      const response = await fetch("/api/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+      const result = await response.json() as { error?:string; message?:string; verificationUrl?:string; user:{name:string} };
+      if (!response.ok) throw new Error(result.error || "操作失敗，請稍後再試。");
+      if (register) {
+        setNotice(result.verificationUrl ? `測試驗證連結：${result.verificationUrl}` : (result.message || "註冊成功，請驗證 Email。"));
+      } else if (result.user) success(result.user);
+    } catch (e) { setError(e instanceof Error ? e.message : "操作失敗。"); }
+    finally { setBusy(false); }
+  };
+  const forgotPassword = async () => {
+    const email = prompt("請輸入註冊使用的 Email"); if (!email) return;
+    setBusy(true); setError("");
+    try { const r=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"forgot",email})}); const d=await r.json() as {error?:string;message:string;resetUrl?:string}; if(!r.ok)throw new Error(d.error); setNotice(d.resetUrl ? `測試重設連結：${d.resetUrl}` : d.message); setForgot(true); }
+    catch(e){setError(e instanceof Error?e.message:"操作失敗。");} finally{setBusy(false);}
   };
   return (
     <section className="authV2 min-h-[680px] bg-[#0d0e12] px-4 py-8 text-white md:py-16">
@@ -1493,6 +1551,7 @@ function MemberAuthV2({
               {error}
             </div>
           )}
+          {notice && <div className="mt-5 break-all border-l-4 border-green-600 bg-green-50 p-3 text-xs leading-5 text-green-800">{notice}</div>}
           <div
             className={`mt-6 grid gap-4 ${register ? "sm:grid-cols-2" : ""}`}
           >
@@ -1603,10 +1662,11 @@ function MemberAuthV2({
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] text-zinc-500">
                 <label>
-                  <input type="checkbox" /> 記住我的登入狀態
+                  <input name="remember" type="checkbox" /> 記住我的登入狀態
                 </label>
                 <button
                   type="button"
+                  onClick={forgotPassword}
                   className="border-0 bg-transparent text-[#654cff]"
                 >
                   忘記密碼？
@@ -1615,13 +1675,18 @@ function MemberAuthV2({
             )}
             <button
               type="submit"
+              disabled={busy}
               className={`min-h-13 bg-gradient-to-r from-[#563adc] to-[#7656ff] px-5 text-sm font-bold text-white ${register ? "sm:col-span-2" : ""}`}
             >
-              {register ? "完成註冊並領取 100 點" : "登入會員中心"}　→
+              {busy ? "處理中…" : register ? "完成註冊並領取 100 點" : "登入會員中心"}　→
             </button>
           </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-zinc-200 pt-5">
+            <button type="button" disabled className="min-h-11 border border-zinc-300 bg-white text-xs font-bold text-zinc-500">Google 登入（待設定）</button>
+            <button type="button" disabled className="min-h-11 border border-zinc-300 bg-white text-xs font-bold text-zinc-500">Facebook 登入（待設定）</button>
+          </div>
           <p className="mt-6 border-t border-zinc-200 pt-5 text-center text-[9px] leading-5 text-zinc-400">
-            展示用會員流程，不會傳送或儲存真實密碼。
+            密碼會經過加密雜湊後保存，系統無法讀取原始密碼。{forgot ? " 測試重設連結已顯示於上方。" : ""}
           </p>
         </form>
       </div>
@@ -1788,11 +1853,26 @@ function MemberAuth({
     </section>
   );
 }
+function PasswordReset({ token, done }: { token: string; done: () => void }) {
+  const [error,setError]=useState(""),[busy,setBusy]=useState(false);
+  return <section className="min-h-[620px] bg-[#0d0e12] px-4 py-20 text-white"><form className="mx-auto max-w-md bg-white p-8 text-[#17181d]" onSubmit={async(e)=>{e.preventDefault();const d=new FormData(e.currentTarget);if(d.get("password")!==d.get("confirm")){setError("兩次密碼不一致。");return;}setBusy(true);const r=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reset",token,password:d.get("password")})});const result=await r.json() as {error?:string};setBusy(false);if(!r.ok)setError(result.error||"操作失敗。");else done();}}>
+    <p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">PASSWORD RESET</p><h1 className="mt-3 text-3xl font-black">設定新密碼</h1>
+    {error&&<div className="mt-5 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
+    <label className="mt-7 block text-xs font-bold">新密碼<input name="password" type="password" minLength={8} required className="mt-2 min-h-12 w-full border border-zinc-300 px-4" placeholder="至少 8 碼，包含英文與數字" /></label>
+    <label className="mt-4 block text-xs font-bold">確認新密碼<input name="confirm" type="password" minLength={8} required className="mt-2 min-h-12 w-full border border-zinc-300 px-4" /></label>
+    <button disabled={busy} className="mt-6 min-h-12 w-full bg-[#654cff] font-bold text-white">{busy?"處理中…":"更新密碼"}</button>
+  </form></section>;
+}
+
 function MemberCenter({
+  name,
   logout,
+  logoutAll,
   shop,
 }: {
+  name: string;
   logout: () => void;
+  logoutAll: () => void;
   shop: () => void;
 }) {
   return (
@@ -1800,7 +1880,7 @@ function MemberCenter({
       <div className="flex flex-col gap-5 border-b border-zinc-300 pb-8 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="eyebrow purple">RIDERS CLUB</p>
-          <h1 className="mt-4 text-4xl font-black">王小明，你好</h1>
+          <h1 className="mt-4 text-4xl font-black">{name}，你好</h1>
           <p className="mt-2 text-sm text-zinc-500">
             YEHDA 銀牌會員 · 會員編號 YD-M0001
           </p>
@@ -1811,6 +1891,7 @@ function MemberCenter({
         >
           登出會員
         </button>
+        <button onClick={logoutAll} className="border border-red-200 bg-white px-5 py-3 text-xs text-red-600">登出所有裝置</button>
       </div>
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
         <div className="grid gap-4 sm:grid-cols-3">
@@ -1912,27 +1993,29 @@ function MemberCenter({
     </section>
   );
 }
-function BrandShowcase({ go }: { go: () => void }) {
+function BrandShowcase({ go, tx }: { go: () => void; tx: (zh: string, en: string) => string }) {
   const brands = [
     {
       name: "POLINI",
       img: "/media/polini.jpg",
-      sub: "ITALIAN RACING PARTS · SINCE 1945",
+      subZh: "義大利競技部品 · 始於 1945",
+      subEn: "ITALIAN RACING PARTS · SINCE 1945",
       className: "polini",
     },
     {
       name: "MALOSSI",
       img: "/media/malossi.jpg",
-      sub: "RACING PERFORMANCE · MADE IN ITALY",
+      subZh: "競技性能 · 義大利製造",
+      subEn: "RACING PERFORMANCE · MADE IN ITALY",
       className: "malossi",
     },
   ];
   return (
     <section className="brandExperience">
       <div className="brandExperienceTitle">
-        <p className="eyebrow purple">OFFICIAL DISTRIBUTION</p>
-        <h2>義大利性能基因</h2>
-        <p>移動滑鼠，擦開品牌背後的競技靈魂</p>
+        <p className="eyebrow purple">{tx("官方代理品牌", "OFFICIAL DISTRIBUTION")}</p>
+        <h2>{tx("義大利性能基因", "ITALIAN PERFORMANCE DNA")}</h2>
+        <p>{tx("移動滑鼠，擦開品牌背後的競技靈魂", "Move the pointer to reveal each brand's racing spirit")}</p>
       </div>
       <div className="brandRevealGrid">
         {brands.map((b) => (
@@ -1954,10 +2037,10 @@ function BrandShowcase({ go }: { go: () => void }) {
           >
             <img src={b.img} alt={`${b.name} 品牌標誌`} />
             <div className="brandCover">
-              <span>AUTHORIZED BRAND</span>
+              <span>{tx("授權品牌", "AUTHORIZED BRAND")}</span>
               <b>{b.name}</b>
-              <small>{b.sub}</small>
-              <i>MOVE TO REVEAL　↗</i>
+              <small>{tx(b.subZh, b.subEn)}</small>
+              <i>{tx("移動探索", "MOVE TO REVEAL")}　↗</i>
             </div>
             <div className="revealRing" />
           </button>
@@ -1966,26 +2049,28 @@ function BrandShowcase({ go }: { go: () => void }) {
     </section>
   );
 }
-function FAQ() {
+function FAQ({ tx }: { tx: (zh: string, en: string) => string }) {
   const rows = [
-    ["營業時間是幾點？", "營業時間為每日 09:30–17:00。"],
-    ["週六、週日可以預約嗎？", "可以，請先來電預約，我們會協助安排服務時間。"],
+    ["營業時間是幾點？", "What are your opening hours?", "營業時間為每日 09:30–17:00。", "We are open daily from 09:30 to 17:00."],
+    ["週六、週日可以預約嗎？", "Can I book a weekend visit?", "可以，請先來電預約，我們會協助安排服務時間。", "Yes. Please call ahead and we will arrange a service time."],
     [
       "自帶商品的安裝工資如何計算？",
+      "How is labor charged for customer-supplied parts?",
       "安裝工資會依商品與車種判斷，請加 LINE 提供商品及車型資訊後詢問。",
+      "Labor depends on the part and motorcycle model. Contact us on LINE with the details for a quote.",
     ],
-    ["現場刷卡是否需要手續費？", "現場刷卡需加收 3% 手續費。"],
+    ["現場刷卡是否需要手續費？", "Is there a fee for card payments?", "現場刷卡需加收 3% 手續費。", "In-store card payments include a 3% processing fee."],
   ];
   return (
     <section id="faq" className="faqSection">
       <div className="faqLayout">
         <div className="faqIntro">
-          <p className="eyebrow">HELP CENTER</p>
-          <h2>常見問題 FAQ</h2>
+          <p className="eyebrow">{tx("服務中心", "HELP CENTER")}</p>
+          <h2>{tx("常見問題", "FREQUENTLY ASKED QUESTIONS")}</h2>
           <p>
-            在出發前，先找到你需要的答案。
+            {tx("在出發前，先找到你需要的答案。", "Find the answers you need before you visit.")}
             <br />
-            其他問題歡迎來電或透過 LINE 詢問。
+            {tx("其他問題歡迎來電或透過 LINE 詢問。", "For anything else, call us or contact us through LINE.")}
           </p>
         </div>
         <div className="faqList">
@@ -1993,23 +2078,23 @@ function FAQ() {
             <details key={r[0]}>
               <summary>
                 <span>0{i + 1}</span>
-                <b>{r[0]}</b>
+                <b>{tx(r[0], r[1])}</b>
                 <i>＋</i>
               </summary>
-              <p>{r[1]}</p>
+              <p>{tx(r[2], r[3])}</p>
             </details>
           ))}
         </div>
       </div>
       <div className="faqMeta">
         <span>
-          <b>營業時間</b>09:30–17:00
+          <b>{tx("營業時間", "Opening Hours")}</b>09:30–17:00
         </span>
         <span>
-          <b>週六、週日</b>來電預約
+          <b>{tx("週六、週日", "Saturday & Sunday")}</b>{tx("來電預約", "By appointment")}
         </span>
         <span>
-          <b>營業地址</b>236 新北市土城區裕生里中華路一段 70 巷 5 號
+          <b>{tx("營業地址", "Address")}</b>{tx("236 新北市土城區裕生里中華路一段 70 巷 5 號", "No. 5, Ln. 70, Sec. 1, Zhonghua Rd., Tucheng Dist., New Taipei City 236")}
         </span>
       </div>
     </section>
@@ -2944,6 +3029,7 @@ const focusProducts = (category: string) =>
     .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)))
     .slice(0, 4);
 function FeaturedCategories({
+  tx,
   order,
   choose,
   fav,
@@ -2951,6 +3037,7 @@ function FeaturedCategories({
   detail,
   add,
 }: {
+  tx: (zh: string, en: string) => string;
   order: string[];
   choose: (c: string) => void;
   fav: number[];
@@ -2961,24 +3048,24 @@ function FeaturedCategories({
   return (
     <section className="featuredProducts">
       <div className="featuredProductsIntro section">
-        <p className="eyebrow purple">PRIORITY CATEGORIES</p>
-        <h2>本週焦點分類</h2>
-        <p>
-          依照後台分類優先順序，展示前三項分類商品；同分類中有實品照片的商品優先。
-        </p>
+        <p className="eyebrow purple">{tx("優先分類", "PRIORITY CATEGORIES")}</p>
+        <h2>{tx("本週焦點分類", "THIS WEEK'S FEATURED CATEGORIES")}</h2>
+        <p>{tx("依照後台分類優先順序，展示前三項分類商品；同分類中有實品照片的商品優先。", "The top three categories follow the admin priority order, with real product photos shown first.")}</p>
       </div>
       {order.slice(0, 3).map((c, i) => (
         <div className={`featuredProductSection ${i % 2 ? "alt" : ""}`} key={c}>
           <div className="section">
             <div className="featuredProductHead">
               <div>
-                <span>PRIORITY 0{i + 1}</span>
-                <h3>{c}</h3>
+                <span>{tx("優先順序", "PRIORITY")} 0{i + 1}</span>
+                <h3>{tx(c, categoryEnglish[c] || c)}</h3>
                 <p>
-                  {i === 0 ? "本週第一優先推薦分類" : "依後台排序自動接續顯示"}
+                  {i === 0
+                    ? tx("本週第一優先推薦分類", "This week's top featured category")
+                    : tx("依後台排序自動接續顯示", "Automatically ordered by admin priority")}
                 </p>
               </div>
-              <button onClick={() => choose(c)}>查看全部 {c}　→</button>
+              <button onClick={() => choose(c)}>{tx(`查看全部 ${c}`, `View all ${categoryEnglish[c] || c}`)}　→</button>
             </div>
             <Grid
               items={focusProducts(c)}
