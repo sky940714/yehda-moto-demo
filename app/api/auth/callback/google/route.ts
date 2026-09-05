@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { oauthLogin } from "../../../../../db/auth";
 
 export async function GET(request:Request){
-  const url=new URL(request.url),code=url.searchParams.get("code"),state=url.searchParams.get("state"),jar=await cookies(),saved=jar.get("yada_oauth_state")?.value;
+  const url=new URL(request.url),code=url.searchParams.get("code"),state=url.searchParams.get("state"),jar=await cookies(),saved=jar.get("yada_oauth_state")?.value,returnTo=jar.get("yada_oauth_return_to")?.value||"/";
   jar.delete("yada_oauth_state");
+  jar.delete("yada_oauth_return_to");
   if(!code||!state||!saved||state!==saved)return NextResponse.redirect(`${url.origin}/?authError=invalid_state`);
   try{
     const tokenResponse=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({code,client_id:process.env.GOOGLE_CLIENT_ID||"",client_secret:process.env.GOOGLE_CLIENT_SECRET||"",redirect_uri:`${url.origin}/api/auth/callback/google`,grant_type:"authorization_code"})});
@@ -16,6 +17,7 @@ export async function GET(request:Request){
     if(!profile.email||profile.email_verified===false)throw new Error("Google Email 未驗證");
     const result=await oauthLogin("google",profile.sub,profile.email,profile.name||"會員");
     jar.set("yada_session",result.session,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:30*86400});
+    if(result.user.phone&&returnTo.startsWith("/")&&!returnTo.startsWith("//"))return NextResponse.redirect(`${url.origin}${returnTo}`);
     return NextResponse.redirect(`${url.origin}/?auth=${result.user.phone?"complete":"phone"}`);
   }catch(error){console.error("Google OAuth error",error);return NextResponse.redirect(`${url.origin}/?authError=google`);}
 }

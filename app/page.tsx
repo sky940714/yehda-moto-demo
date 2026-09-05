@@ -10,6 +10,11 @@ type P = {
   color: string;
   fit: string[];
   image?: string;
+  sku?: string;
+  stock?: number;
+  status?: "active" | "draft" | "out_of_stock";
+  description?: string;
+  shippingType?: "small" | "home" | "quote";
 };
 
 function CartIcon() {
@@ -119,413 +124,7 @@ function OwnerStoryVideo({ title }: { title: string }) {
     />
   );
 }
-const ps: P[] = [
-  {
-    id: 1,
-    name: "NXR2 街頭全罩安全帽",
-    brand: "SHOEI",
-    cat: "安全帽",
-    price: 16800,
-    color: "violet",
-    fit: ["全車種"],
-  },
-  {
-    id: 2,
-    name: "HI-SPEED 傳動套件",
-    brand: "POLINI",
-    cat: "傳動",
-    price: 6980,
-    color: "blue",
-    fit: ["YAMAHA 勁戰六代 2024", "YAMAHA FORCE 2.0 2023"],
-  },
-  {
-    id: 3,
-    name: "RS24 後避震器",
-    brand: "MALOSSI",
-    cat: "前後避震",
-    price: 12800,
-    color: "red",
-    fit: ["SYM JET SL+ 2024", "SYM DRG 2023"],
-  },
-  {
-    id: 4,
-    name: "浮動浪花碟盤 260mm",
-    brand: "POLINI",
-    cat: "碟盤",
-    price: 4200,
-    color: "silver",
-    fit: ["YAMAHA 勁戰六代 2024"],
-  },
-  {
-    id: 5,
-    name: "競技陶瓷煞車皮",
-    brand: "MALOSSI",
-    cat: "煞車皮",
-    price: 1680,
-    color: "yellow",
-    fit: ["SYM JET SL+ 2024", "SYM MMBCU 2024"],
-  },
-  {
-    id: 6,
-    name: "AERO 短版燻黑風鏡",
-    brand: "YEHDA",
-    cat: "風鏡",
-    price: 2380,
-    color: "smoke",
-    fit: ["YAMAHA FORCE 2.0 2023", "SYM DRG 2023"],
-  },
-  {
-    id: 7,
-    name: "GT-Air 3 旅行全罩安全帽",
-    brand: "SHOEI",
-    cat: "安全帽",
-    price: 19800,
-    color: "blue",
-    fit: ["全車種"],
-  },
-  {
-    id: 8,
-    name: "Glamster 復古全罩安全帽",
-    brand: "SHOEI",
-    cat: "安全帽",
-    price: 15800,
-    color: "silver",
-    fit: ["全車種"],
-  },
-  {
-    id: 9,
-    name: "EX-ZERO 越野復古安全帽",
-    brand: "SHOEI",
-    cat: "安全帽",
-    price: 14600,
-    color: "yellow",
-    fit: ["全車種"],
-  },
-  {
-    id: 10,
-    name: "MAXI SPEED 普利盤組",
-    brand: "MALOSSI",
-    cat: "傳動",
-    price: 7200,
-    color: "red",
-    fit: ["YAMAHA 勁戰六代", "SYM JET SL+ 158"],
-  },
-  {
-    id: 11,
-    name: "X-SPECIAL 強化傳動皮帶",
-    brand: "POLINI",
-    cat: "傳動",
-    price: 3280,
-    color: "blue",
-    fit: ["YAMAHA FORCE 2.0", "KYMCO KRV MOTO 180"],
-  },
-  {
-    id: 12,
-    name: "DELTA 可調競技離合器",
-    brand: "MALOSSI",
-    cat: "傳動",
-    price: 8600,
-    color: "yellow",
-    fit: ["SYM DRGBT", "YAMAHA NMAX 155"],
-  },
-  {
-    id: 13,
-    name: "FORK RACING 前叉套件",
-    brand: "POLINI",
-    cat: "前後避震",
-    price: 9800,
-    color: "blue",
-    fit: ["YAMAHA 勁戰六代", "SYM JET SL+ 158"],
-  },
-  {
-    id: 14,
-    name: "RS24 雙槍後避震器",
-    brand: "MALOSSI",
-    cat: "前後避震",
-    price: 14800,
-    color: "red",
-    fit: ["KYMCO Racing S 150", "SYM 迪爵 125"],
-  },
-  {
-    id: 15,
-    name: "街道版預載可調避震器",
-    brand: "YEHDA",
-    cat: "前後避震",
-    price: 7880,
-    color: "violet",
-    fit: ["YAMAHA FORCE 2.0", "SYM MMBCU"],
-  },
-  {
-    id: 16,
-    name: "競技浮動碟盤 220mm",
-    brand: "POLINI",
-    cat: "碟盤",
-    price: 3680,
-    color: "silver",
-    fit: ["SYM JET SL+ 158", "YAMAHA 勁戰六代"],
-  },
-  {
-    id: 17,
-    name: "放射紋浮動碟盤 245mm",
-    brand: "YEHDA",
-    cat: "碟盤",
-    price: 3980,
-    color: "blue",
-    fit: ["KYMCO KRV MOTO 180", "SYM DRGBT"],
-  },
-  {
-    id: 18,
-    name: "後輪輕量化碟盤",
-    brand: "MALOSSI",
-    cat: "碟盤",
-    price: 2980,
-    color: "red",
-    fit: ["YAMAHA XMAX 300", "HONDA FORZA 350"],
-  },
-  {
-    id: 19,
-    name: "ROAD SPORT 街道煞車皮",
-    brand: "POLINI",
-    cat: "煞車皮",
-    price: 1280,
-    color: "blue",
-    fit: ["全車種"],
-  },
-  {
-    id: 20,
-    name: "SINTERED 金屬燒結煞車皮",
-    brand: "MALOSSI",
-    cat: "煞車皮",
-    price: 1980,
-    color: "red",
-    fit: ["全車種"],
-  },
-  {
-    id: 21,
-    name: "低粉塵陶瓷煞車皮",
-    brand: "YEHDA",
-    cat: "煞車皮",
-    price: 1480,
-    color: "yellow",
-    fit: ["全車種"],
-  },
-  {
-    id: 22,
-    name: "TOURING 加高旅行風鏡",
-    brand: "YEHDA",
-    cat: "風鏡",
-    price: 3280,
-    color: "blue",
-    fit: ["HONDA FORZA 350", "YAMAHA XMAX 300"],
-  },
-  {
-    id: 23,
-    name: "CRYSTAL 高透光風鏡",
-    brand: "POLINI",
-    cat: "風鏡",
-    price: 2860,
-    color: "silver",
-    fit: ["HONDA ADV 350", "SYM MAXSYM TL 508"],
-  },
-  {
-    id: 24,
-    name: "RACING 雙曲面風鏡",
-    brand: "MALOSSI",
-    cat: "風鏡",
-    price: 3580,
-    color: "red",
-    fit: ["YAMAHA NMAX 155", "HONDA PCX 160"],
-  },
-  {
-    id: 25,
-    name: "原裝進口握把 EVOLUTION 無打洞",
-    brand: "POLINI",
-    cat: "握把",
-    price: 0,
-    color: "blue",
-    fit: ["全車種／安裝前請確認把手規格"],
-    image: "/media/product-polini-grip.png",
-  },
-  {
-    id: 26,
-    name: "原裝握把 黑／白款 有打洞",
-    brand: "MALOSSI",
-    cat: "握把",
-    price: 0,
-    color: "red",
-    fit: ["全車種／黑白兩色皆有現貨"],
-    image: "/media/product-malossi-grip.png",
-  },
-  {
-    id: 27,
-    name: "大彈簧 JOYMAX Z+／XMAX300／TRICITY 300",
-    brand: "MALOSSI",
-    cat: "大彈簧",
-    price: 0,
-    color: "yellow",
-    fit: ["SYM JOYMAX Z+", "YAMAHA XMAX 300", "YAMAHA TRICITY 300"],
-    image: "/media/product-malossi-spring-joymax.png",
-  },
-  {
-    id: 28,
-    name: "大彈簧 KYMCO KRV 180／G7 K值5",
-    brand: "MALOSSI",
-    cat: "大彈簧",
-    price: 0,
-    color: "red",
-    fit: ["KYMCO KRV 180", "KYMCO G7"],
-    image: "/media/product-malossi-spring-krv.png",
-  },
-  {
-    id: 29,
-    name: "短版大彈簧 G3／悍將／G5／G6／雷霆系列",
-    brand: "POLINI",
-    cat: "大彈簧",
-    price: 0,
-    color: "blue",
-    fit: [
-      "KYMCO G3／G5／G6",
-      "SYM 悍將",
-      "KYMCO 雷霆／雷霆王",
-      "KYMCO KRV 180／G7",
-    ],
-    image: "/media/product-polini-spring-short.png",
-  },
-  {
-    id: 30,
-    name: "大彈簧 馬車／勁戰／OZ150／GTR／BW’S125",
-    brand: "MALOSSI",
-    cat: "大彈簧",
-    price: 0,
-    color: "yellow",
-    fit: [
-      "YAMAHA 馬車",
-      "YAMAHA 勁戰 1～5 代",
-      "AEON OZ150",
-      "YAMAHA GTR／BW’S125／勁風光",
-    ],
-    image: "/media/product-malossi-spring-cygnus.png",
-  },
-  {
-    id: 31,
-    name: "冠軍高流量空濾 FORCE／SMAX 專用",
-    brand: "BMC",
-    cat: "空濾",
-    price: 0,
-    color: "red",
-    fit: ["YAMAHA FORCE", "YAMAHA SMAX"],
-    image: "/media/product-bmc-filter-force.png",
-  },
-  {
-    id: 32,
-    name: "冠軍高流量空濾 水冷六代戰／BWS／FORCE 2.0",
-    brand: "BMC",
-    cat: "空濾",
-    price: 0,
-    color: "red",
-    fit: [
-      "YAMAHA 水冷勁戰六代",
-      "YAMAHA 水冷 BW’S",
-      "YAMAHA FORCE 2.0／AUGUR／NMAX",
-    ],
-    image: "/media/product-bmc-filter-watercool.png",
-  },
-  {
-    id: 33,
-    name: "冠軍高流量空濾 DRG／MMBCU／4MICA／JET SL",
-    brand: "BMC",
-    cat: "空濾",
-    price: 0,
-    color: "red",
-    fit: [
-      "SYM DRG 1／2 代",
-      "SYM MMBCU／4MICA",
-      "SYM JET SL 158",
-      "SYM Fiddle DX",
-    ],
-    image: "/media/product-bmc-filter-drg.png",
-  },
-  {
-    id: 34,
-    name: "原裝皮帶 BWS125／四代勁戰專用",
-    brand: "MALOSSI",
-    cat: "皮帶",
-    price: 0,
-    color: "yellow",
-    fit: ["YAMAHA BWS125／BWS 125", "YAMAHA 四代勁戰"],
-    image: "/media/product-malossi-belt-bws.png",
-  },
-  {
-    id: 35,
-    name: "原裝皮帶 SUZUKI AN250 專用",
-    brand: "MALOSSI",
-    cat: "皮帶",
-    price: 0,
-    color: "yellow",
-    fit: ["SUZUKI AN250"],
-    image: "/media/product-malossi-belt-an250.png",
-  },
-  {
-    id: 36,
-    name: "強化皮帶 KYMCO 刺激250／刺激300 專用",
-    brand: "MALOSSI",
-    cat: "皮帶",
-    price: 0,
-    color: "yellow",
-    fit: ["KYMCO 刺激 250", "KYMCO 刺激 300"],
-    image: "/media/product-malossi-belt-kymco.png",
-  },
-  {
-    id: 37,
-    name: "一般皮帶 YAMAHA Cygnus X 125／勁戰",
-    brand: "POLINI",
-    cat: "皮帶",
-    price: 0,
-    color: "blue",
-    fit: ["YAMAHA Cygnus X 125", "YAMAHA 勁戰"],
-    image: "/media/product-polini-belt-cygnus.png",
-  },
-  {
-    id: 38,
-    name: "墨色短風鏡 DOWNTOWN GT 350 專用",
-    brand: "MALOSSI",
-    cat: "風鏡",
-    price: 0,
-    color: "smoke",
-    fit: ["KYMCO DOWNTOWN GT 350", "尺寸：長 42 × 高 40 cm"],
-    image: "/media/product-malossi-screen-downtown.png",
-  },
-  {
-    id: 39,
-    name: "燻黑前風鏡組 ITALJET DRAGSTER 200 專用",
-    brand: "MALOSSI",
-    cat: "風鏡",
-    price: 0,
-    color: "smoke",
-    fit: ["ITALJET DRAGSTER 200"],
-    image: "/media/product-malossi-screen-dragster.png",
-  },
-  {
-    id: 40,
-    name: "短風鏡 NIKITA 專用",
-    brand: "MALOSSI",
-    cat: "風鏡",
-    price: 0,
-    color: "smoke",
-    fit: ["KYMCO NIKITA"],
-    image: "/media/product-malossi-screen-nikita.png",
-  },
-  {
-    id: 41,
-    name: "風鏡 HONDA X-ADV 750 專用",
-    brand: "MALOSSI",
-    cat: "風鏡",
-    price: 0,
-    color: "smoke",
-    fit: ["HONDA X-ADV 750 2017～2020"],
-    image: "/media/product-malossi-screen-xadv.png",
-  },
-];
+const ps: P[] = [];
 const cats = [
   "全部商品",
   "風鏡",
@@ -599,7 +198,7 @@ export default function App() {
     [cat, setCat] = useState("全部商品"),
     [maker, setMaker] = useState(""),
     [model, setModel] = useState(""),
-    [picked, setPicked] = useState(ps[0]),
+    [picked, setPicked] = useState<P | null>(null),
     [step, setStep] = useState(1),
     [tab, setTab] = useState("數據總覽"),
     [toast, setToast] = useState(""),
@@ -607,6 +206,9 @@ export default function App() {
     [memberName, setMemberName] = useState("會員"),
     [authToken, setAuthToken] = useState(""),
     [postLoginPage, setPostLoginPage] = useState("account"),
+    [products, setProducts] = useState<P[]>([]),
+    [catalogLoading, setCatalogLoading] = useState(true),
+    [catalogError, setCatalogError] = useState(""),
     [categoryOrder, setCategoryOrder] = useState(cats.slice(1)),
     [lang, setLang] = useState<"zh" | "en">("zh");
   useAutoTranslate(lang);
@@ -626,6 +228,11 @@ export default function App() {
       setMemberLoggedIn(Boolean(user));
       if (user?.name) setMemberName(user.name);
     }).catch(() => {});
+    const loadCatalog=()=>fetch("/api/products",{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((data:{products?:P[]})=>{setProducts(Array.isArray(data.products)?data.products:[]);setCatalogError("")}).catch(()=>{setProducts([]);setCatalogError("商品資料目前無法載入，請稍後再試。")}).finally(()=>setCatalogLoading(false));
+    loadCatalog();
+    const refreshCatalog=()=>{if(!document.hidden)loadCatalog();};
+    window.addEventListener("focus",refreshCatalog);
+    document.addEventListener("visibilitychange",refreshCatalog);
     const params = new URLSearchParams(location.search);
     const action = params.get("auth"), token = params.get("token") || "";
     if (action === "verify" && token) {
@@ -635,7 +242,12 @@ export default function App() {
     } else if (action === "reset" && token) { setAuthToken(token); setPage("reset"); }
     else if (action === "phone") { setPage("phone"); history.replaceState({}, "", "/"); }
     else if (action === "complete") { setMemberLoggedIn(true); setPage("account"); history.replaceState({}, "", "/"); }
-    else if (params.get("authError")) { setToast("Google 登入失敗，請重新嘗試。"); setPage("login"); history.replaceState({}, "", "/"); }
+    else if (params.get("authError")) {
+      const authError = params.get("authError");
+      setToast(authError === "facebook_cancelled" ? "你已取消 Facebook 登入。" : authError === "facebook" ? "Facebook 登入失敗，請確認帳號已提供 Email。" : "社群登入失敗，請重新嘗試。");
+      setPage("login"); history.replaceState({}, "", "/");
+    }
+    return()=>{window.removeEventListener("focus",refreshCatalog);document.removeEventListener("visibilitychange",refreshCatalog);};
   }, []);
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
@@ -669,7 +281,7 @@ export default function App() {
     };
   const filtered = useMemo(
     () =>
-      ps
+      products
         .filter(
           (p) =>
             (cat === "全部商品" || p.cat === cat) &&
@@ -681,20 +293,11 @@ export default function App() {
               p.fit[0] === "全車種"),
         )
         .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image))),
-    [cat, maker, model],
+    [cat, maker, model, products],
   );
-  const cp = cart.map((id) => ps.find((p) => p.id === id)!).filter(Boolean),
+  const storefrontCategories=useMemo(()=>{const real=[...new Set(products.map((product)=>product.cat).filter(Boolean))];return [...categoryOrder.filter((category)=>real.includes(category)),...real.filter((category)=>!categoryOrder.includes(category))]},[products,categoryOrder]);
+  const cp = cart.map((id) => products.find((p) => p.id === id)!).filter(Boolean),
     total = cp.reduce((s, p) => s + p.price, 0);
-  if (page === "admin")
-    return (
-      <Admin
-        tab={tab}
-        setTab={setTab}
-        back={() => go("home")}
-        categoryOrder={categoryOrder}
-        setCategoryOrder={setCategoryOrder}
-      />
-    );
   return (
     <div>
       <header>
@@ -764,9 +367,6 @@ export default function App() {
                 ? tx(memberName, memberName)
                 : tx("登入／註冊", "SIGN IN")}
             </span>
-          </button>
-          <button className="adminBtn" onClick={() => go("admin")}>
-            {tx("後台展示", "Admin Demo")} ↗
           </button>
         </div>
       </header>
@@ -879,7 +479,8 @@ export default function App() {
             </section>
             <FeaturedCategories
               tx={tx}
-              order={categoryOrder}
+              order={storefrontCategories}
+              products={products}
               fav={fav}
               heart={heart}
               detail={detail}
@@ -895,7 +496,7 @@ export default function App() {
                 title={tx("從你的下一項升級開始", "START YOUR NEXT UPGRADE")}
               />
               <div className="catGrid">
-                {categoryOrder.map((c, i) => (
+                {storefrontCategories.map((c, i) => (
                   <button
                     key={c}
                     onClick={() => {
@@ -934,7 +535,7 @@ export default function App() {
             <div className="catalogBody">
               <aside>
                 <b>商品分類</b>
-                {cats.map((c) => (
+                {["全部商品",...storefrontCategories].map((c) => (
                   <button
                     className={cat === c ? "active" : ""}
                     onClick={() => setCat(c)}
@@ -967,11 +568,13 @@ export default function App() {
                   detail={detail}
                   add={add}
                 />
+                {!catalogLoading&&!catalogError&&!filtered.length&&<Empty text="目前沒有已上架商品" go={()=>go("home")}/>}
+                {catalogError&&<div className="empty"><p>{catalogError}</p></div>}
               </div>
             </div>
           </section>
         )}
-        {page === "detail" && (
+        {page === "detail" && picked && (
           <section className="detail">
             <button className="back" onClick={() => go("products")}>
               ← 返回商品列表
@@ -982,15 +585,10 @@ export default function App() {
                 {picked.brand} · {picked.cat}
               </p>
               <h1>{picked.name}</h1>
-              <div className="stars">
-                ★★★★★ <span>4.9（28 則評價）</span>
-              </div>
               <div className={`price ${!picked.price ? "pricePending" : ""}`}>
                 {nt(picked.price)}
               </div>
-              <p>
-                義大利性能精品展示商品，實際規格、售價與庫存請以業主正式上架資料為準，購買前可先確認愛車適配。
-              </p>
+              <p>{picked.description || "此商品尚未填寫商品說明。"}</p>
               <hr />
               <label>
                 規格
@@ -1013,14 +611,14 @@ export default function App() {
               </div>
               <div className="fitNote">
                 <b>✓ 適用車種</b>
-                {picked.fit.map((x) => (
+                {picked.fit.length ? picked.fit.map((x) => (
                   <span key={x}>{x}</span>
-                ))}
+                )) : <span>尚未設定</span>}
               </div>
               <ul>
-                <li>原裝進口／展示資料待業主確認</li>
-                <li>7 日鑑賞期（未安裝商品）</li>
-                <li>提供代安裝服務，請於結帳完成後加入官方 LINE 洽詢</li>
+                <li>商品編號：{picked.sku || "尚未設定"}</li>
+                <li>庫存：{typeof picked.stock === "number" ? `${picked.stock} 件` : "尚未設定"}</li>
+                <li>配送類型：{picked.shippingType === "small" ? "小型／超商" : picked.shippingType === "home" ? "一般宅配" : picked.shippingType === "quote" ? "大型／另行報價" : "尚未設定"}</li>
               </ul>
             </div>
           </section>
@@ -1061,7 +659,7 @@ export default function App() {
             />
             {fav.length ? (
               <Grid
-                items={ps.filter((p) => fav.includes(p.id))}
+                items={products.filter((p) => fav.includes(p.id))}
                 fav={fav}
                 heart={heart}
                 detail={detail}
@@ -1201,9 +799,6 @@ export default function App() {
           <small className="contactNote">
             {tx("不需登入即可查看", "No login required")}
           </small>
-          <a href="mailto:rossi.b0168@msa.hinet.net">
-            Email：rossi.b0168@msa.hinet.net
-          </a>
         </div>
         <small>
           © 2026 {tx("燁達機車精品店", "YADA MOTORCYCLE")}｜
@@ -1418,7 +1013,7 @@ function SocialAuth(){
     <aside className="relative bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-8 lg:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YADA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">快速登入<br/>開始你的升級旅程</h1><p className="mt-5 text-xs leading-6 text-zinc-300">使用熟悉的社群帳號安全登入；我們不會取得你的 Google 或 Facebook 密碼。</p></aside>
     <div className="bg-white p-7 text-[#17181d] lg:p-12"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">MEMBER SIGN IN</p><h2 className="mt-3 text-3xl font-black">登入／建立會員</h2><p className="mt-3 text-xs leading-6 text-zinc-500">首次登入後需補填手機號碼，作為訂單與取貨聯絡使用。</p>
       <a href="/api/auth/google" className="mt-8 flex min-h-14 items-center justify-center border border-zinc-300 bg-white px-5 text-sm font-bold text-[#17181d] hover:border-[#654cff]">使用 Google 繼續</a>
-      <button disabled className="mt-3 min-h-14 w-full border border-zinc-200 bg-zinc-100 px-5 text-sm font-bold text-zinc-400">使用 Facebook 繼續（下一步設定）</button>
+      <a href="/api/auth/facebook" className="mt-3 flex min-h-14 items-center justify-center border border-[#1877f2] bg-[#1877f2] px-5 text-sm font-bold text-white hover:bg-[#166fe5]">使用 Facebook 繼續</a>
       <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。會員帳號會依社群平台已驗證的 Email 自動合併。</p>
     </div>
   </div></section>;
@@ -3019,8 +2614,8 @@ function Choices({ name, rows }: { name: string; rows: string[][] }) {
     </div>
   );
 }
-const focusProducts = (category: string) =>
-  ps
+const focusProducts = (products: P[], category: string) =>
+  products
     .filter((p) =>
       category === "傳動"
         ? ["傳動", "皮帶", "大彈簧"].includes(p.cat)
@@ -3036,6 +2631,7 @@ function FeaturedCategories({
   heart,
   detail,
   add,
+  products,
 }: {
   tx: (zh: string, en: string) => string;
   order: string[];
@@ -3044,6 +2640,7 @@ function FeaturedCategories({
   heart: (i: number) => void;
   detail: (p: P) => void;
   add: (i: number) => void;
+  products: P[];
 }) {
   return (
     <section className="featuredProducts">
@@ -3068,7 +2665,7 @@ function FeaturedCategories({
               <button onClick={() => choose(c)}>{tx(`查看全部 ${c}`, `View all ${categoryEnglish[c] || c}`)}　→</button>
             </div>
             <Grid
-              items={focusProducts(c)}
+              items={focusProducts(products, c)}
               fav={fav}
               heart={heart}
               detail={detail}
@@ -3841,7 +3438,7 @@ function Admin({
             </button>
             <span>YD</span>
             <b>
-              管理員<small>admin@yehda.tw</small>
+              管理員<small>已由伺服器驗證</small>
             </b>
           </div>
         </header>

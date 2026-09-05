@@ -1,0 +1,9 @@
+.bulkBar{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:12px 14px;background:#17181d;color:white}
+.bulkBar b{margin-right:auto;font-size:12px}
+.bulkBar button{border:1px solid #464852;background:#292b32;color:white;padding:8px 11px;font-size:10px}
+.bulkBar button.danger{border-color:#7d323a;background:#532229;color:#ffd5da}
+.bulkBar button.quiet{border-color:transparent;background:transparent;color:#aaa}
+.selectCell{width:42px;text-align:center!important}
+.selectCell input{width:16px;height:16px;accent-color:#654cff}
+.productTable tr.selectedRow{background:#f0edff}
+@media(max-width:760px){.bulkBar{align-items:stretch;flex-wrap:wrap}.bulkBar b{width:100%;margin-bottom:4px}}

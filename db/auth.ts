@@ -2,12 +2,14 @@ import mysql, { type Pool, type RowDataPacket } from "mysql2/promise";
 import { compare, hash } from "bcryptjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-export type PublicUser = { id: string; name: string; email: string; phone: string | null; emailVerified: boolean };
+export type UserRole = "customer" | "staff" | "manager" | "admin" | "owner";
+export type PublicUser = { id: string; name: string; email: string; phone: string | null; emailVerified: boolean; role: UserRole };
 type UserRecord = PublicUser & { passwordHash: string | null; sessionVersion: number };
 type TokenKind = "verify" | "reset";
 
 const users = new Map<string, UserRecord>();
 const sessions = new Map<string, { userId: string; version: number; expiresAt: number }>();
+const adminSessions = new Map<string, { userId: string; expiresAt: number }>();
 const tokens = new Map<string, { userId: string; kind: TokenKind; expiresAt: number }>();
 const oauthAccounts = new Map<string, string>();
 let pool: Pool | null | undefined;
@@ -30,9 +32,15 @@ async function schema(db: Pool) {
       email VARCHAR(254) NOT NULL UNIQUE, phone VARCHAR(20) NULL UNIQUE,
       password_hash VARCHAR(255) NULL, email_verified_at DATETIME NULL,
       session_version INT UNSIGNED NOT NULL DEFAULT 1,
+      role ENUM('customer','staff','manager','admin','owner') NOT NULL DEFAULT 'customer',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    try {
+      await db.execute("ALTER TABLE users ADD COLUMN role ENUM('customer','staff','manager','admin','owner') NOT NULL DEFAULT 'customer' AFTER session_version");
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ER_DUP_FIELDNAME") throw error;
+    }
     await db.execute(`CREATE TABLE IF NOT EXISTS auth_tokens (
       token_hash CHAR(64) PRIMARY KEY, user_id CHAR(36) NOT NULL,
       kind ENUM('verify','reset') NOT NULL, expires_at DATETIME NOT NULL,
@@ -45,6 +53,11 @@ async function schema(db: Pool) {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX sessions_user_idx (user_id), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await db.execute(`CREATE TABLE IF NOT EXISTS admin_sessions (
+      token_hash CHAR(64) PRIMARY KEY, user_id CHAR(36) NOT NULL,
+      expires_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX admin_sessions_user_idx (user_id), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     await db.execute(`CREATE TABLE IF NOT EXISTS oauth_accounts (
       provider VARCHAR(30) NOT NULL, provider_account_id VARCHAR(191) NOT NULL,
       user_id CHAR(36) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,18 +68,19 @@ async function schema(db: Pool) {
 }
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
-const publicUser = (u: UserRecord): PublicUser => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: u.emailVerified });
+const adminEmail = () => (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+const publicUser = (u: UserRecord): PublicUser => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: u.emailVerified, role: u.role });
 
 async function find(identifier: string): Promise<UserRecord | null> {
   const value = identifier.trim().toLowerCase();
   const db = database();
   if (!db) return [...users.values()].find((u) => u.email === value || u.phone === value) || null;
   await schema(db);
-  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; password_hash: string | null; email_verified_at: Date | null; session_version: number })[]>(
-    "SELECT id,name,email,phone,password_hash,email_verified_at,session_version FROM users WHERE email=? OR phone=? LIMIT 1", [value, value],
+  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; password_hash: string | null; email_verified_at: Date | null; session_version: number; role: UserRole })[]>(
+    "SELECT id,name,email,phone,password_hash,email_verified_at,session_version,role FROM users WHERE email=? OR phone=? LIMIT 1", [value, value],
   );
   const u = rows[0];
-  return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, passwordHash: u.password_hash, emailVerified: Boolean(u.email_verified_at), sessionVersion: u.session_version } : null;
+  return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, passwordHash: u.password_hash, emailVerified: Boolean(u.email_verified_at), sessionVersion: u.session_version, role: u.role || "customer" } : null;
 }
 
 export async function registerUser(name: string, email: string, phone: string, password: string) {
@@ -79,13 +93,13 @@ export async function registerUser(name: string, email: string, phone: string, p
   if (!db) {
     if ([...users.values()].some((u) => u.email === email)) throw new Error("此 Email 已經註冊。");
     if ([...users.values()].some((u) => u.phone === phone)) throw new Error("此手機號碼已經註冊。");
-    users.set(id, { id, name, email, phone, passwordHash, emailVerified: false, sessionVersion: 1 });
+    users.set(id, { id, name, email, phone, passwordHash, emailVerified: false, sessionVersion: 1, role: "customer" });
   } else {
     await schema(db);
     try { await db.execute("INSERT INTO users (id,name,email,phone,password_hash) VALUES (?,?,?,?,?)", [id, name, email, phone, passwordHash]); }
     catch (error) { if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new Error("Email 或手機號碼已經註冊。"); throw error; }
   }
-  return { user: { id, name, email, phone, emailVerified: false }, token: await issueToken(id, "verify", 24 * 60 * 60) };
+  return { user: { id, name, email, phone, emailVerified: false, role: "customer" as const }, token: await issueToken(id, "verify", 24 * 60 * 60) };
 }
 
 export async function loginUser(identifier: string, password: string) {
@@ -123,9 +137,30 @@ export async function currentUser(raw?: string): Promise<PublicUser | null> {
   const key = digest(raw), db = database();
   if (!db) { const s = sessions.get(key), u = s && users.get(s.userId); return s && u && s.expiresAt > Date.now() && s.version === u.sessionVersion ? publicUser(u) : null; }
   await schema(db);
-  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; email_verified_at: Date | null })[]>(`SELECT u.id,u.name,u.email,u.phone,u.email_verified_at FROM user_sessions s JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version WHERE s.token_hash=? AND s.expires_at>NOW() LIMIT 1`, [key]);
-  const u = rows[0]; return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: Boolean(u.email_verified_at) } : null;
+  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; email_verified_at: Date | null; role: UserRole })[]>(`SELECT u.id,u.name,u.email,u.phone,u.email_verified_at,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version WHERE s.token_hash=? AND s.expires_at>NOW() LIMIT 1`, [key]);
+  const u = rows[0]; return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: Boolean(u.email_verified_at), role: u.role || "customer" } : null;
 }
+
+export async function adminPasswordLogin(email: string, password: string) {
+  email = email.trim().toLowerCase();
+  const expectedEmail = adminEmail(), passwordHash = process.env.ADMIN_PASSWORD_HASH_B64 ? Buffer.from(process.env.ADMIN_PASSWORD_HASH_B64,"base64").toString("utf8") : (process.env.ADMIN_PASSWORD_HASH || "");
+  if (!expectedEmail || !passwordHash || email !== expectedEmail || !(await compare(password, passwordHash))) throw new Error("帳號或密碼不正確。");
+  const db = database(); let user = await find(email);
+  if (!db) {
+    if (!user) { const id=randomUUID(); user={id,name:"管理員",email,phone:null,passwordHash,emailVerified:true,sessionVersion:1,role:"owner"}; users.set(id,user); }
+    else { user.passwordHash=passwordHash; user.emailVerified=true; user.role="owner"; }
+  } else {
+    await schema(db);
+    if (!user) { const id=randomUUID(); await db.execute("INSERT INTO users(id,name,email,password_hash,email_verified_at,role) VALUES(?,?,?,?,NOW(),'owner')",[id,"管理員",email,passwordHash]); user=await findUserById(id); }
+    else { await db.execute("UPDATE users SET password_hash=?,email_verified_at=COALESCE(email_verified_at,NOW()),role='owner' WHERE id=?",[passwordHash,user.id]); user=await findUserById(user.id); }
+  }
+  if (!user) throw new Error("帳號或密碼不正確。");
+  return { user: publicUser(user), session: await issueAdminSession(user.id) };
+}
+
+async function issueAdminSession(userId:string){const raw=randomBytes(32).toString("base64url"),key=digest(raw),expiresAt=Date.now()+8*60*60*1000,db=database();if(!db)adminSessions.set(key,{userId,expiresAt});else{await schema(db);await db.execute("INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)",[key,userId,new Date(expiresAt)]);}return raw;}
+export async function currentAdmin(raw?:string):Promise<PublicUser|null>{if(!raw)return null;const key=digest(raw),db=database();if(!db){const s=adminSessions.get(key),u=s&&users.get(s.userId);return s&&u&&s.expiresAt>Date.now()&&isAdmin(publicUser(u))?publicUser(u):null;}await schema(db);const[rows]=await db.query<(RowDataPacket&{id:string;name:string;email:string;phone:string|null;email_verified_at:Date|null;role:UserRole})[]>(`SELECT u.id,u.name,u.email,u.phone,u.email_verified_at,u.role FROM admin_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>NOW() AND u.role IN ('staff','manager','admin','owner') LIMIT 1`,[key]);const u=rows[0];return u?{id:u.id,name:u.name,email:u.email,phone:u.phone,emailVerified:Boolean(u.email_verified_at),role:u.role}:null;}
+export async function logoutAdmin(raw?:string){if(!raw)return;const key=digest(raw),db=database();if(!db)adminSessions.delete(key);else await db.execute("DELETE FROM admin_sessions WHERE token_hash=?",[key]);}
 
 export async function verifyEmail(raw: string) {
   const id = await consumeToken(raw, "verify"); if (!id) return false;
@@ -146,10 +181,14 @@ export async function logoutAll(userId: string) { const db=database(); if(!db){c
 
 export async function oauthLogin(provider: string, providerAccountId: string, email: string, name: string) {
   email=email.trim().toLowerCase(); name=name.trim()||"會員"; const accountKey=`${provider}:${providerAccountId}`; const db=database(); let user:UserRecord|null=null;
-  if(!db){ const userId=oauthAccounts.get(accountKey); user=userId?users.get(userId)||null:await find(email); if(!user){const id=randomUUID();user={id,name,email,phone:null,passwordHash:null,emailVerified:true,sessionVersion:1};users.set(id,user);} oauthAccounts.set(accountKey,user.id); }
+  if(!db){ const userId=oauthAccounts.get(accountKey); user=userId?users.get(userId)||null:await find(email); if(!user){const id=randomUUID();user={id,name,email,phone:null,passwordHash:null,emailVerified:true,sessionVersion:1,role:"customer"};users.set(id,user);} oauthAccounts.set(accountKey,user.id); }
   else { await schema(db); const [linked]=await db.query<(RowDataPacket&{user_id:string})[]>("SELECT user_id FROM oauth_accounts WHERE provider=? AND provider_account_id=?",[provider,providerAccountId]); user=linked[0]?await findUserById(linked[0].user_id):await find(email); if(!user){const id=randomUUID();await db.execute("INSERT INTO users(id,name,email,email_verified_at) VALUES(?,?,?,NOW())",[id,name,email]);user=await findUserById(id);} if(!linked[0])await db.execute("INSERT INTO oauth_accounts(provider,provider_account_id,user_id) VALUES(?,?,?)",[provider,providerAccountId,user!.id]); }
   return {user:publicUser(user!),session:await issueSession(user!)};
 }
 
-async function findUserById(id:string):Promise<UserRecord|null>{const db=database();if(!db)return users.get(id)||null;const [rows]=await db.query<(RowDataPacket&{id:string;name:string;email:string;phone:string|null;password_hash:string|null;email_verified_at:Date|null;session_version:number})[]>("SELECT id,name,email,phone,password_hash,email_verified_at,session_version FROM users WHERE id=?",[id]);const u=rows[0];return u?{id:u.id,name:u.name,email:u.email,phone:u.phone,passwordHash:u.password_hash,emailVerified:Boolean(u.email_verified_at),sessionVersion:u.session_version}:null;}
+async function findUserById(id:string):Promise<UserRecord|null>{const db=database();if(!db)return users.get(id)||null;const [rows]=await db.query<(RowDataPacket&{id:string;name:string;email:string;phone:string|null;password_hash:string|null;email_verified_at:Date|null;session_version:number;role:UserRole})[]>("SELECT id,name,email,phone,password_hash,email_verified_at,session_version,role FROM users WHERE id=?",[id]);const u=rows[0];return u?{id:u.id,name:u.name,email:u.email,phone:u.phone,passwordHash:u.password_hash,emailVerified:Boolean(u.email_verified_at),sessionVersion:u.session_version,role:u.role||"customer"}:null;}
+
+export function isAdmin(user: PublicUser | null): user is PublicUser {
+  return Boolean(user && ["staff", "manager", "admin", "owner"].includes(user.role));
+}
 export async function savePhone(userId:string,phone:string){phone=phone.trim();if(!/^09\d{8}$/.test(phone))throw new Error("手機號碼必須是 09 開頭的 10 位數字。");const db=database();if(!db){if([...users.values()].some(u=>u.phone===phone&&u.id!==userId))throw new Error("此手機號碼已被使用。");const u=users.get(userId);if(u)u.phone=phone;}else{try{await db.execute("UPDATE users SET phone=? WHERE id=?",[phone,userId]);}catch(e){if((e as {code?:string}).code==="ER_DUP_ENTRY")throw new Error("此手機號碼已被使用。");throw e;}}return findUserById(userId);}

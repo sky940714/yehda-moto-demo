@@ -7,6 +7,9 @@ export async function GET(request: Request) {
   if(!clientId)return NextResponse.json({error:"Google 登入尚未設定。"},{status:503});
   const state=randomBytes(24).toString("base64url"), jar=await cookies();
   jar.set("yada_oauth_state",state,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:600});
+  const requestedReturnTo=new URL(request.url).searchParams.get("returnTo")||"/";
+  const returnTo=requestedReturnTo.startsWith("/")&&!requestedReturnTo.startsWith("//")?requestedReturnTo:"/";
+  jar.set("yada_oauth_return_to",returnTo,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:600});
   const origin=new URL(request.url).origin;
   const query=new URLSearchParams({client_id:clientId,redirect_uri:`${origin}/api/auth/callback/google`,response_type:"code",scope:"openid email profile",state,prompt:"select_account"});
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${query}`);
