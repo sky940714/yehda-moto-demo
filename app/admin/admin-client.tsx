@@ -10,6 +10,7 @@ import "./admin-bulk.css";
 type Props = { user: { name: string; role: string } };
 type Tab = "overview" | "products" | "categories" | "brands" | "vehicles" | "orders" | "returns" | "members" | "settings";
 type Overview = { products: number; orders: number; pendingOrders: number; revenue: number };
+type ApiError = { error?: string };
 
 const empty: Partial<CatalogProduct> = { name: "", brand: "", cat: "", price: 0, stock: 0, status: "draft", color: "smoke", fit: [], description: "", shippingType: "small" };
 const nav: { id: Tab; label: string; icon: string }[] = [
@@ -41,8 +42,8 @@ export default function AdminClient({ user }: Props) {
 
   const load = async () => {
     const [p, o] = await Promise.all([fetch("/api/admin/products"), fetch("/api/admin/overview")]);
-    if (p.ok) setProducts((await p.json()).products);
-    if (o.ok) setOverview((await o.json()).overview);
+    if (p.ok) setProducts(((await p.json()) as { products: CatalogProduct[] }).products);
+    if (o.ok) setOverview(((await o.json()) as { overview: Overview }).overview);
   };
   useEffect(() => { load(); }, []);
 
@@ -60,16 +61,16 @@ export default function AdminClient({ user }: Props) {
     const form = new FormData(e.currentTarget);
     const body = { ...editing, name: form.get("name"), sku: form.get("sku"), brand: form.get("brand"), cat: form.get("cat"), price: Number(form.get("price")), stock: Number(form.get("stock")), status: form.get("status"), image: form.get("image"), description: form.get("description"), fit: String(form.get("fit") || "").split("\n").map((x) => x.trim()).filter(Boolean), shippingType: form.get("shippingType") };
     const response = await fetch("/api/admin/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const data = await response.json();
+    const data = (await response.json()) as ApiError;
     if (!response.ok) { setMessage(data.error || "儲存失敗"); return; }
     setMessage("商品已儲存並寫入資料庫。"); setEditing(null); await load();
   };
   const remove = async (id: number) => { if (!confirm("確定刪除此商品？此操作會留下管理紀錄。")) return; await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" }); await load(); };
   const toggleSelected = (id:number) => setSelected((current) => { const next=new Set(current); if(next.has(id))next.delete(id);else next.add(id); return next; });
   const toggleShown = () => setSelected((current) => shown.length > 0 && shown.every((product) => current.has(product.id)) ? new Set([...current].filter((id) => !shown.some((product) => product.id === id))) : new Set([...current, ...shown.map((product) => product.id)]));
-  const bulkStatus = async (status:CatalogProduct["status"]) => { const ids=[...selected]; if(!ids.length)return; const response=await fetch("/api/admin/products",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids,status})}); const data=await response.json(); if(!response.ok){setMessage(data.error||"批次更新失敗。");return;} setMessage(`已更新 ${data.updated} 項商品。`);setSelected(new Set());await load(); };
-  const bulkDelete = async () => { const ids=[...selected];if(!ids.length||!confirm(`確定刪除已選取的 ${ids.length} 項商品？此操作無法復原。`))return;const response=await fetch("/api/admin/products",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})});const data=await response.json();if(!response.ok){setMessage(data.error||"批次刪除失敗。");return;}setMessage(`已刪除 ${data.deleted} 項商品。`);setSelected(new Set());await load();};
-  const upload = async (file?: File) => { if (!file) return; setMessage("圖片上傳中…"); const form = new FormData(); form.set("file", file); const response = await fetch("/api/admin/uploads", { method: "POST", body: form }); const data = await response.json(); if (!response.ok) { setMessage(data.error || "圖片上傳失敗。"); return; } setEditing((x) => x ? { ...x, image: data.url } : x); setMessage("圖片已上傳至 Cloudflare R2。"); };
+  const bulkStatus = async (status:CatalogProduct["status"]) => { const ids=[...selected]; if(!ids.length)return; const response=await fetch("/api/admin/products",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids,status})}); const data=(await response.json()) as ApiError & { updated?: number }; if(!response.ok){setMessage(data.error||"批次更新失敗。");return;} setMessage(`已更新 ${data.updated ?? 0} 項商品。`);setSelected(new Set());await load(); };
+  const bulkDelete = async () => { const ids=[...selected];if(!ids.length||!confirm(`確定刪除已選取的 ${ids.length} 項商品？此操作無法復原。`))return;const response=await fetch("/api/admin/products",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})});const data=(await response.json()) as ApiError & { deleted?: number };if(!response.ok){setMessage(data.error||"批次刪除失敗。");return;}setMessage(`已刪除 ${data.deleted ?? 0} 項商品。`);setSelected(new Set());await load();};
+  const upload = async (file?: File) => { if (!file) return; setMessage("圖片上傳中…"); const form = new FormData(); form.set("file", file); const response = await fetch("/api/admin/uploads", { method: "POST", body: form }); const data = (await response.json()) as ApiError & { url?: string }; if (!response.ok || !data.url) { setMessage(data.error || "圖片上傳失敗。"); return; } setEditing((x) => x ? { ...x, image: data.url } : x); setMessage("圖片已上傳至 Cloudflare R2。"); };
   const exportOverview = () => { const rows = [["指標", "數值"], ["商品總數", overview.products], ["訂單總數", overview.orders], ["待處理訂單", overview.pendingOrders], ["累計營業額", overview.revenue]]; const blob = new Blob(["\ufeff" + rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `yada-overview-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url); };
 
   const title = nav.find((item) => item.id === tab)?.label || "後台管理";

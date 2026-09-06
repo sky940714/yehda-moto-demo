@@ -228,7 +228,7 @@ export default function App() {
       setMemberLoggedIn(Boolean(user));
       if (user?.name) setMemberName(user.name);
     }).catch(() => {});
-    const loadCatalog=()=>fetch("/api/products",{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((data:{products?:P[]})=>{setProducts(Array.isArray(data.products)?data.products:[]);setCatalogError("")}).catch(()=>{setProducts([]);setCatalogError("商品資料目前無法載入，請稍後再試。")}).finally(()=>setCatalogLoading(false));
+    const loadCatalog=()=>fetch("/api/products",{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((value)=>{const data=value as {products?:P[]};setProducts(Array.isArray(data.products)?data.products:[]);setCatalogError("")}).catch(()=>{setProducts([]);setCatalogError("商品資料目前無法載入，請稍後再試。")}).finally(()=>setCatalogLoading(false));
     loadCatalog();
     const refreshCatalog=()=>{if(!document.hidden)loadCatalog();};
     window.addEventListener("focus",refreshCatalog);

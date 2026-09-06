@@ -11,7 +11,7 @@ export async function POST(request:Request){
   const h=await headers(),key=clientKey(h.get("x-forwarded-for")),now=Date.now(),entry=attempts.get(key);
   if(entry&&entry.resetAt>now&&entry.count>=5)return NextResponse.json({error:"登入嘗試次數過多，請 15 分鐘後再試。"},{status:429});
   try{
-    const body=await request.json(),result=await adminPasswordLogin(String(body.email||""),String(body.password||""));
+    const body=(await request.json()) as {email?:unknown;password?:unknown},result=await adminPasswordLogin(String(body.email||""),String(body.password||""));
     attempts.delete(key);
     const response=NextResponse.json({ok:true,user:{name:result.user.name,role:result.user.role}});
     response.cookies.set("yada_admin_session",result.session,{httpOnly:true,sameSite:"strict",secure:process.env.NODE_ENV==="production",path:"/",maxAge:8*60*60});
