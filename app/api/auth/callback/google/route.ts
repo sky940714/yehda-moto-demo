@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { oauthLogin } from "../../../../../db/auth";
+import { isSecureRequest } from "../../../../../db/http";
 
 export async function GET(request:Request){
   const url=new URL(request.url),code=url.searchParams.get("code"),state=url.searchParams.get("state"),jar=await cookies(),saved=jar.get("yada_oauth_state")?.value,returnTo=jar.get("yada_oauth_return_to")?.value||"/";
@@ -16,7 +17,7 @@ export async function GET(request:Request){
     const profile=await profileResponse.json() as {sub:string;email:string;email_verified?:boolean;name?:string};
     if(!profile.email||profile.email_verified===false)throw new Error("Google Email 未驗證");
     const result=await oauthLogin("google",profile.sub,profile.email,profile.name||"會員");
-    jar.set("yada_session",result.session,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:30*86400});
+    jar.set("yada_session",result.session,{httpOnly:true,sameSite:"lax",secure:isSecureRequest(request),path:"/",maxAge:30*86400});
     if(result.user.phone&&returnTo.startsWith("/")&&!returnTo.startsWith("//"))return NextResponse.redirect(`${url.origin}${returnTo}`);
     return NextResponse.redirect(`${url.origin}/?auth=${result.user.phone?"complete":"phone"}`);
   }catch(error){console.error("Google OAuth error",error);return NextResponse.redirect(`${url.origin}/?authError=google`);}

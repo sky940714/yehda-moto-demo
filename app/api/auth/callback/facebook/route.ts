@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { oauthLogin } from "../../../../../db/auth";
+import { isSecureRequest } from "../../../../../db/http";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     jar.set("yada_session", result.session, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecureRequest(request),
       path: "/",
       maxAge: 30 * 86400,
     });

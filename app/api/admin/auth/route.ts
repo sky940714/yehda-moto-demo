@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { adminPasswordLogin, logoutAdmin } from "../../../../db/auth";
+import { isSecureRequest } from "../../../../db/http";
 
 const attempts = new Map<string,{count:number;resetAt:number}>();
 const windowMs = 15 * 60 * 1000;
@@ -14,7 +15,7 @@ export async function POST(request:Request){
     const body=(await request.json()) as {email?:unknown;password?:unknown},result=await adminPasswordLogin(String(body.email||""),String(body.password||""));
     attempts.delete(key);
     const response=NextResponse.json({ok:true,user:{name:result.user.name,role:result.user.role}});
-    response.cookies.set("yada_admin_session",result.session,{httpOnly:true,sameSite:"strict",secure:process.env.NODE_ENV==="production",path:"/",maxAge:8*60*60});
+    response.cookies.set("yada_admin_session",result.session,{httpOnly:true,sameSite:"strict",secure:isSecureRequest(request),path:"/",maxAge:8*60*60});
     return response;
   }catch(error){
     const current=entry&&entry.resetAt>now?entry:{count:0,resetAt:now+windowMs};current.count++;attempts.set(key,current);
@@ -22,4 +23,4 @@ export async function POST(request:Request){
   }
 }
 
-export async function DELETE(){const jar=await cookies(),raw=jar.get("yada_admin_session")?.value;await logoutAdmin(raw);const response=NextResponse.json({ok:true});response.cookies.set("yada_admin_session","",{httpOnly:true,sameSite:"strict",secure:process.env.NODE_ENV==="production",path:"/",maxAge:0});return response;}
+export async function DELETE(request:Request){const jar=await cookies(),raw=jar.get("yada_admin_session")?.value;await logoutAdmin(raw);const response=NextResponse.json({ok:true});response.cookies.set("yada_admin_session","",{httpOnly:true,sameSite:"strict",secure:isSecureRequest(request),path:"/",maxAge:0});return response;}

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { currentUser, loginUser, logout, logoutAll, registerUser, requestReset, resetPassword, savePhone, verifyEmail } from "../../../db/auth";
+import { isSecureRequest } from "../../../db/http";
 
 const COOKIE = "yada_session";
 const jsonError = (message: string, status = 400) => NextResponse.json({ error: message }, { status });
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     if (action === "verify") return (await verifyEmail(String(body.token||""))) ? NextResponse.json({ message: "Email 驗證成功，現在可以登入。" }) : jsonError("驗證連結無效或已過期。");
     if (action === "login") {
       const { user, session } = await loginUser(String(body.identifier||""), String(body.password||""));
-      jar.set(COOKIE, session, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: body.remember ? 30*86400 : 86400 });
+      jar.set(COOKIE, session, { httpOnly: true, sameSite: "lax", secure: isSecureRequest(request), path: "/", maxAge: body.remember ? 30*86400 : 86400 });
       return NextResponse.json({ user });
     }
     if (action === "forgot") {

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { isSecureRequest } from "../../../../db/http";
 
 export async function GET(request: Request) {
   const clientId = process.env.FACEBOOK_CLIENT_ID;
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   jar.set("yada_facebook_oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureRequest(request),
     path: "/",
     maxAge: 600,
   });
