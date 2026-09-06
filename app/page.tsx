@@ -10,11 +10,13 @@ type P = {
   color: string;
   fit: string[];
   image?: string;
+  images?: string[];
   sku?: string;
   stock?: number;
   status?: "active" | "draft" | "out_of_stock";
   description?: string;
   shippingType?: "small" | "home" | "quote";
+  specifications?: { name: string; values: string[] }[];
 };
 
 function CartIcon() {
@@ -590,13 +592,12 @@ export default function App() {
               </div>
               <p>{picked.description || "此商品尚未填寫商品說明。"}</p>
               <hr />
-              <label>
-                規格
-                <select>
-                  <option>標準規格</option>
-                  {picked.cat === "握把" && <option>黑色／白色</option>}
-                </select>
-              </label>
+              {picked.specifications?.length ? picked.specifications.map((specification) => (
+                <label key={specification.name}>
+                  {specification.name}
+                  <select>{specification.values.map((value) => <option key={value}>{value}</option>)}</select>
+                </label>
+              )) : <label>規格<select><option>標準規格</option></select></label>}
               <div className="buy">
                 <button
                   className="primary"
