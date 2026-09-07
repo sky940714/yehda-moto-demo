@@ -2,6 +2,7 @@ import mysql, { type Pool, type ResultSetHeader, type RowDataPacket } from "mysq
 import { randomBytes } from "node:crypto";
 
 export type ProductSpecification = { name: string; values: string[] };
+export type ProductVariant = { id?: number; sku: string; options: Record<string,string>; price: number; stock: number; image?: string; isActive: boolean };
 export type CatalogOptionKind = "brand" | "category" | "vehicle";
 export type CatalogOptions = { brands: string[]; categories: string[]; vehicles: string[] };
 
@@ -9,7 +10,7 @@ export type CatalogProduct = {
   id: number; name: string; brand: string; cat: string; price: number; color: string;
   fit: string[]; image?: string; images: string[]; sku: string; stock: number;
   status: "active" | "draft" | "out_of_stock"; description: string;
-  shippingType: "small" | "home" | "quote"; specifications: ProductSpecification[];
+  shippingType: "small" | "home" | "quote"; specifications: ProductSpecification[]; variants: ProductVariant[];
 };
 
 let pool: Pool | null | undefined;
@@ -30,6 +31,20 @@ const cleanSpecifications = (value: unknown): ProductSpecification[] => Array.is
   const row = item as { name?: unknown; values?: unknown };
   return { name: String(row?.name || "").trim(), values: cleanList(row?.values, 30) };
 }).filter((item) => item.name && item.values.length).slice(0, 20) : [];
+const cleanVariants = (value: unknown, specifications:ProductSpecification[]):ProductVariant[] => {
+  if(!Array.isArray(value)||!specifications.length)return [];
+  const allowed=new Map(specifications.map((group)=>[group.name,new Set(group.values)]));
+  const seen=new Set<string>(),result:ProductVariant[]=[];
+  for(const item of value){
+    const row=item as Partial<ProductVariant>,options=Object.fromEntries(Object.entries(row.options||{}).map(([key,val])=>[String(key).trim(),String(val).trim()]));
+    const valid=specifications.every((group)=>allowed.get(group.name)?.has(options[group.name]));
+    const key=specifications.map((group)=>`${group.name}:${options[group.name]||""}`).join("|");
+    if(!valid||seen.has(key))continue;seen.add(key);
+    result.push({id:Number(row.id)||undefined,sku:String(row.sku||"").trim(),options,price:Math.max(0,Number(row.price||0)),stock:Math.max(0,Number(row.stock||0)),image:String(row.image||"").trim()||undefined,isActive:row.isActive!==false});
+    if(result.length>=300)break;
+  }
+  return result;
+};
 
 async function ensure() {
   ready ??= (async () => {
@@ -65,6 +80,15 @@ async function ensure() {
       INDEX product_specs_product_sort_idx(product_id,group_sort_order,value_sort_order),
       CONSTRAINT product_specs_product_fk FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await database.execute(`CREATE TABLE IF NOT EXISTS product_variants (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, product_id BIGINT UNSIGNED NOT NULL,
+      sku VARCHAR(100) NOT NULL, option_values JSON NOT NULL, price INT UNSIGNED NOT NULL DEFAULT 0,
+      stock INT UNSIGNED NOT NULL DEFAULT 0, image_url TEXT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY product_variants_product_sku_unique(product_id,sku), INDEX product_variants_product_sort_idx(product_id,is_active,sort_order),
+      CONSTRAINT product_variants_product_fk FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     await database.execute(`CREATE TABLE IF NOT EXISTS orders (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, order_number VARCHAR(32) NOT NULL UNIQUE,
       user_id CHAR(36) NULL, customer_name VARCHAR(100) NOT NULL, customer_email VARCHAR(254) NOT NULL,
@@ -91,7 +115,7 @@ async function ensure() {
   await ready;
 }
 
-const fromRow = (r: RowDataPacket): CatalogProduct => ({ id:Number(r.id), sku:r.sku, name:r.name, brand:r.brand, cat:r.category, price:Number(r.price), stock:Number(r.stock), status:r.status, color:r.color, fit:cleanList(typeof r.fitment === "string" ? JSON.parse(r.fitment) : r.fitment), image:r.image_url || undefined, images:r.image_url ? [r.image_url] : [], description:r.description, shippingType:r.shipping_type, specifications:[] });
+const fromRow = (r: RowDataPacket): CatalogProduct => ({ id:Number(r.id), sku:r.sku, name:r.name, brand:r.brand, cat:r.category, price:Number(r.price), stock:Number(r.stock), status:r.status, color:r.color, fit:cleanList(typeof r.fitment === "string" ? JSON.parse(r.fitment) : r.fitment), image:r.image_url || undefined, images:r.image_url ? [r.image_url] : [], description:r.description, shippingType:r.shipping_type, specifications:[], variants:[] });
 
 export async function listProducts(admin = false) {
   await ensure(); const database=db();
@@ -99,14 +123,16 @@ export async function listProducts(admin = false) {
   const [rows]=await database.query<RowDataPacket[]>(`SELECT * FROM products ${admin?"":"WHERE status='active'"} ORDER BY id`);
   if (!rows.length) return [];
   const ids=rows.map((row)=>Number(row.id)), placeholders=ids.map(()=>"?").join(",");
-  const [imageRows,specRows]=await Promise.all([
+  const [imageRows,specRows,variantRows]=await Promise.all([
     database.query<RowDataPacket[]>(`SELECT product_id,image_url,sort_order FROM product_images WHERE product_id IN (${placeholders}) ORDER BY product_id,sort_order,id`,ids).then(([result])=>result),
     database.query<RowDataPacket[]>(`SELECT product_id,spec_name,spec_value,group_sort_order,value_sort_order FROM product_specifications WHERE product_id IN (${placeholders}) ORDER BY product_id,group_sort_order,value_sort_order,id`,ids).then(([result])=>result),
+    database.query<RowDataPacket[]>(`SELECT id,product_id,sku,option_values,price,stock,image_url,is_active FROM product_variants WHERE product_id IN (${placeholders}) ORDER BY product_id,sort_order,id`,ids).then(([result])=>result),
   ]);
-  const images=new Map<number,string[]>(), specs=new Map<number,ProductSpecification[]>();
+  const images=new Map<number,string[]>(), specs=new Map<number,ProductSpecification[]>(),variants=new Map<number,ProductVariant[]>();
   for(const row of imageRows){const id=Number(row.product_id),list=images.get(id)||[];list.push(String(row.image_url));images.set(id,list);}
   for(const row of specRows){const id=Number(row.product_id),list=specs.get(id)||[],order=Number(row.group_sort_order);let group=list[order];if(!group){group={name:String(row.spec_name),values:[]};list[order]=group;}group.values.push(String(row.spec_value));specs.set(id,list);}
-  return rows.map((row)=>{const product=fromRow(row),orderedImages=images.get(product.id)||product.images;return{...product,images:orderedImages,image:orderedImages[0],specifications:(specs.get(product.id)||[]).filter(Boolean)};});
+  for(const row of variantRows){const id=Number(row.product_id),list=variants.get(id)||[];list.push({id:Number(row.id),sku:String(row.sku),options:typeof row.option_values==="string"?JSON.parse(row.option_values):row.option_values,price:Number(row.price),stock:Number(row.stock),image:row.image_url||undefined,isActive:Boolean(row.is_active)});variants.set(id,list);}
+  return rows.map((row)=>{const product=fromRow(row),orderedImages=images.get(product.id)||product.images;return{...product,images:orderedImages,image:orderedImages[0],specifications:(specs.get(product.id)||[]).filter(Boolean),variants:variants.get(product.id)||[]};});
 }
 
 export async function listCatalogOptions():Promise<CatalogOptions>{
@@ -125,11 +151,12 @@ export async function saveCatalogOption(kind:CatalogOptionKind,name:string){
 }
 
 export async function saveProduct(input: Partial<CatalogProduct>, adminUserId: string) {
-  await ensure(); const database=db(); const id=Number(input.id||0), fit=cleanList(input.fit), images=cleanList(input.images?.length?input.images:(input.image?[input.image]:[]),8), specifications=cleanSpecifications(input.specifications);
+  await ensure(); const database=db(); const id=Number(input.id||0), fit=cleanList(input.fit), images=cleanList(input.images?.length?input.images:(input.image?[input.image]:[]),8), specifications=cleanSpecifications(input.specifications),variants=cleanVariants(input.variants,specifications);
   const allowedStatus=new Set(["active","draft","out_of_stock"]),allowedShipping=new Set(["small","home","quote"]);
   const status=allowedStatus.has(String(input.status))?input.status as CatalogProduct["status"]:"draft",shippingType=allowedShipping.has(String(input.shippingType))?input.shippingType as CatalogProduct["shippingType"]:"small";
-  const product:CatalogProduct={id,sku:String(input.sku||"").trim()||generatedSku(),name:String(input.name||"").trim(),brand:String(input.brand||"").trim(),cat:String(input.cat||"").trim(),price:Math.max(0,Number(input.price||0)),stock:Math.max(0,Number(input.stock||0)),status,color:String(input.color||"smoke"),fit,image:images[0],images,description:String(input.description||""),shippingType,specifications};
+  const product:CatalogProduct={id,sku:String(input.sku||"").trim()||generatedSku(),name:String(input.name||"").trim(),brand:String(input.brand||"").trim(),cat:String(input.cat||"").trim(),price:Math.max(0,Number(input.price||0)),stock:Math.max(0,Number(input.stock||0)),status,color:String(input.color||"smoke"),fit,image:images[0],images,description:String(input.description||""),shippingType,specifications,variants};
   if(!product.name||!product.brand||!product.cat) throw new Error("商品名稱、品牌和分類為必填。");
+  const activeVariants=variants.filter((variant)=>variant.isActive);if(activeVariants.length){const priced=activeVariants.map((variant)=>variant.price).filter((price)=>price>0);if(priced.length)product.price=Math.min(...priced);product.stock=activeVariants.reduce((sum,variant)=>sum+variant.stock,0);}
   if(!database){const next=id||Math.max(0,...memory.keys())+1;product.id=next;memory.set(next,product);memoryOptions.brand.add(product.brand);memoryOptions.category.add(product.cat);fit.forEach((value)=>memoryOptions.vehicle.add(value));return product;}
   const connection=await database.getConnection();let savedId=id;
   try{
@@ -140,6 +167,8 @@ export async function saveProduct(input: Partial<CatalogProduct>, adminUserId: s
     for(let index=0;index<images.length;index++)await connection.execute("INSERT INTO product_images(product_id,image_url,sort_order) VALUES(?,?,?)",[savedId,images[index],index]);
     await connection.execute("DELETE FROM product_specifications WHERE product_id=?",[savedId]);
     for(let groupIndex=0;groupIndex<specifications.length;groupIndex++)for(let valueIndex=0;valueIndex<specifications[groupIndex].values.length;valueIndex++)await connection.execute("INSERT INTO product_specifications(product_id,spec_name,spec_value,group_sort_order,value_sort_order) VALUES(?,?,?,?,?)",[savedId,specifications[groupIndex].name,specifications[groupIndex].values[valueIndex],groupIndex,valueIndex]);
+    await connection.execute("DELETE FROM product_variants WHERE product_id=?",[savedId]);
+    for(let index=0;index<variants.length;index++){const variant=variants[index];await connection.execute("INSERT INTO product_variants(product_id,sku,option_values,price,stock,image_url,is_active,sort_order) VALUES(?,?,?,?,?,?,?,?)",[savedId,variant.sku||`${product.sku}-${index+1}`,JSON.stringify(variant.options),variant.price,variant.stock,variant.image||null,variant.isActive,index]);}
     for(const [kind,value] of [["brand",product.brand],["category",product.cat],...fit.map((value)=>["vehicle",value])] as [CatalogOptionKind,string][])await connection.execute("INSERT INTO catalog_options(kind,name,is_active) VALUES(?,?,TRUE) ON DUPLICATE KEY UPDATE is_active=TRUE",[kind,value]);
     await connection.execute("INSERT INTO admin_audit_logs(admin_user_id,action,entity_type,entity_id,details) VALUES(?,'save','product',?,?)",[adminUserId,String(savedId),JSON.stringify({name:product.name,status:product.status,images:images.length})]);
     await connection.commit();product.id=savedId;return product;

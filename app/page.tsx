@@ -17,7 +17,12 @@ type P = {
   description?: string;
   shippingType?: "small" | "home" | "quote";
   specifications?: { name: string; values: string[] }[];
+  variants?: ProductVariant[];
+  cartKey?: string;
+  selectedOptions?: Record<string,string>;
 };
+type ProductVariant = { id?: number; sku: string; options: Record<string,string>; price: number; stock: number; image?: string; isActive: boolean };
+type CartItem = { productId:number; variantId?:number; key:string; options:Record<string,string>; price?:number; sku?:string; image?:string };
 
 function CartIcon() {
   return (
@@ -193,14 +198,16 @@ const catImages = [
   "/media/product-malossi-belt-bws.png",
 ];
 const nt = (n: number) => (n > 0 ? `NT$ ${n.toLocaleString()}` : "售價待確認");
+const variantPriceLabel=(variants:ProductVariant[])=>{const prices=variants.filter((variant)=>variant.stock>0&&variant.price>0).map((variant)=>variant.price);if(!prices.length)return"目前無可購買規格";const min=Math.min(...prices),max=Math.max(...prices);return min===max?nt(min):`${nt(min)} ～ ${nt(max)}`;};
 export default function App() {
   const [page, setPage] = useState("home"),
-    [cart, setCart] = useState<number[]>([]),
+    [cart, setCart] = useState<CartItem[]>([]),
     [fav, setFav] = useState<number[]>([]),
     [cat, setCat] = useState("全部商品"),
     [maker, setMaker] = useState(""),
     [model, setModel] = useState(""),
     [picked, setPicked] = useState<P | null>(null),
+    [selectedOptions,setSelectedOptions]=useState<Record<string,string>>({}),
     [step, setStep] = useState(1),
     [tab, setTab] = useState("數據總覽"),
     [toast, setToast] = useState(""),
@@ -217,7 +224,8 @@ export default function App() {
   const tx = (zh: string, en: string) => (lang === "zh" ? zh : en);
   useEffect(() => {
     try {
-      setCart(JSON.parse(localStorage.getItem("cart") || "[]"));
+      const stored=JSON.parse(localStorage.getItem("cart") || "[]") as unknown[];
+      setCart(stored.map((item,index)=>typeof item==="number"?{productId:item,key:`${item}:standard:${index}`,options:{}}:item as CartItem).filter((item)=>Number(item.productId)>0));
       setFav(JSON.parse(localStorage.getItem("fav") || "[]"));
       setLang(localStorage.getItem("site-language") === "en" ? "en" : "zh");
       const saved = JSON.parse(
@@ -270,8 +278,9 @@ export default function App() {
         ),
       );
     },
-    add = (id: number) => {
-      setCart((x) => [...x, id]);
+    add = (id: number, variant?:ProductVariant, options:Record<string,string>={}) => {
+      const key=variant?.id?`${id}:variant:${variant.id}`:`${id}:standard`;
+      setCart((x) => [...x, {productId:id,variantId:variant?.id,key,options,price:variant?.price,sku:variant?.sku,image:variant?.image}]);
       setToast("已加入購物車");
       setTimeout(() => setToast(""), 1500);
     },
@@ -279,6 +288,7 @@ export default function App() {
       setFav((x) => (x.includes(id) ? x.filter((i) => i !== id) : [...x, id])),
     detail = (p: P) => {
       setPicked(p);
+      setSelectedOptions({});
       go("detail");
     };
   const filtered = useMemo(
@@ -298,8 +308,14 @@ export default function App() {
     [cat, maker, model, products],
   );
   const storefrontCategories=useMemo(()=>{const real=[...new Set(products.map((product)=>product.cat).filter(Boolean))];return [...categoryOrder.filter((category)=>real.includes(category)),...real.filter((category)=>!categoryOrder.includes(category))]},[products,categoryOrder]);
-  const cp = cart.map((id) => products.find((p) => p.id === id)!).filter(Boolean),
+  const cp:P[] = cart.flatMap((item) => {const product=products.find((p)=>p.id===item.productId);if(!product)return[];return[{...product,price:item.price??product.price,stock:item.variantId?product.variants?.find((variant)=>variant.id===item.variantId)?.stock:product.stock,sku:item.sku||product.sku,image:item.image||product.image,cartKey:item.key,selectedOptions:item.options}];}),
     total = cp.reduce((s, p) => s + p.price, 0);
+  const pickedSpecifications=picked?.specifications||[];
+  const activeVariants=(picked?.variants||[]).filter((variant)=>variant.isActive);
+  const selectedVariant=activeVariants.find((variant)=>pickedSpecifications.every((group)=>selectedOptions[group.name]===variant.options[group.name]));
+  const detailProduct=picked?{...picked,image:selectedVariant?.image||picked.image}:null;
+  const detailPrice=selectedVariant?.price??picked?.price??0;
+  const selectionComplete=Boolean(picked)&&(!pickedSpecifications.length||(activeVariants.length?Boolean(selectedVariant):pickedSpecifications.every((group)=>Boolean(selectedOptions[group.name]))));
   return (
     <div>
       <header>
@@ -581,30 +597,28 @@ export default function App() {
             <button className="back" onClick={() => go("products")}>
               ← 返回商品列表
             </button>
-            <Visual p={picked} big />
+            <Visual p={detailProduct||picked} big />
             <div className="detailInfo">
               <p className="eyebrow purple">
                 {picked.brand} · {picked.cat}
               </p>
               <h1>{picked.name}</h1>
-              <div className={`price ${!picked.price ? "pricePending" : ""}`}>
-                {nt(picked.price)}
+              <div className={`price ${!detailPrice ? "pricePending" : ""}`}>
+                {activeVariants.length&&!selectedVariant?variantPriceLabel(activeVariants):nt(detailPrice)}
               </div>
               <p>{picked.description || "此商品尚未填寫商品說明。"}</p>
               <hr />
-              {picked.specifications?.length ? picked.specifications.map((specification) => (
-                <label key={specification.name}>
-                  {specification.name}
-                  <select>{specification.values.map((value) => <option key={value}>{value}</option>)}</select>
-                </label>
-              )) : <label>規格<select><option>標準規格</option></select></label>}
+              {picked.specifications?.length ? <div className="variantPickers">{picked.specifications.map((specification) => (
+                <fieldset key={specification.name}><legend>{specification.name}<span>{selectedOptions[specification.name]||"請選擇"}</span></legend><div>{specification.values.map((value)=>{const available=!activeVariants.length||activeVariants.some((variant)=>variant.stock>0&&variant.options[specification.name]===value&&(picked.specifications||[]).every((other)=>other.name===specification.name||!selectedOptions[other.name]||variant.options[other.name]===selectedOptions[other.name]));return <button type="button" className={selectedOptions[specification.name]===value?"active":""} disabled={!available} onClick={()=>setSelectedOptions((current)=>({...current,[specification.name]:value}))} key={value}>{value}</button>})}</div></fieldset>
+              ))}</div> : <div className="standardVariant">標準規格</div>}
+              {picked.specifications?.length&&<div className={`variantStatus ${(selectedVariant?.stock||(!activeVariants.length&&selectionComplete))?"ready":""}`}>{selectedVariant?selectedVariant.stock>0?`現貨 ${selectedVariant.stock} 件 · 編號 ${selectedVariant.sku}`:"此規格目前缺貨":selectionComplete?`現貨 ${picked.stock||0} 件 · 編號 ${picked.sku}`:"請選擇完整規格"}</div>}
               <div className="buy">
                 <button
                   className="primary"
-                  disabled={!picked.price}
-                  onClick={() => picked.price && add(picked.id)}
+                  disabled={!detailPrice||!selectionComplete||Boolean(selectedVariant&&selectedVariant.stock<1)}
+                  onClick={() => detailPrice&&selectionComplete&&add(picked.id,selectedVariant,selectedOptions)}
                 >
-                  {picked.price ? "加入購物車" : "售價確認後開放購買"}
+                  {!selectionComplete?"請先選擇規格":selectedVariant&&selectedVariant.stock<1?"此規格已售完":detailPrice?"加入購物車":"售價確認後開放購買"}
                 </button>
                 <button onClick={() => heart(picked.id)}>
                   {fav.includes(picked.id) ? "♥ 已收藏" : "♡ 收藏"}
@@ -617,8 +631,8 @@ export default function App() {
                 )) : <span>尚未設定</span>}
               </div>
               <ul>
-                <li>商品編號：{picked.sku || "尚未設定"}</li>
-                <li>庫存：{typeof picked.stock === "number" ? `${picked.stock} 件` : "尚未設定"}</li>
+                <li>商品編號：{selectedVariant?.sku || picked.sku || "尚未設定"}</li>
+                <li>庫存：{selectedVariant ? `${selectedVariant.stock} 件` : typeof picked.stock === "number" ? `${picked.stock} 件` : "尚未設定"}</li>
                 <li>配送類型：{picked.shippingType === "small" ? "小型／超商" : picked.shippingType === "home" ? "一般宅配" : picked.shippingType === "quote" ? "大型／另行報價" : "尚未設定"}</li>
               </ul>
             </div>
@@ -699,11 +713,11 @@ export default function App() {
           <CartV2
             items={cp}
             total={total}
-            remove={(id) => setCart((x) => x.filter((n) => n !== id))}
-            increase={(id) => setCart((x) => [...x, id])}
-            decrease={(id) =>
+            remove={(key) => setCart((x) => x.filter((item) => item.key !== key))}
+            increase={(key) => setCart((x) => {const item=x.find((entry)=>entry.key===key);return item?[...x,item]:x;})}
+            decrease={(key) =>
               setCart((x) => {
-                const index = x.indexOf(id);
+                const index = x.findIndex((item)=>item.key===key);
                 return index < 0 ? x : x.filter((_, n) => n !== index);
               })
             }
@@ -864,16 +878,16 @@ function CartV2({
 }: {
   items: P[];
   total: number;
-  remove: (id: number) => void;
-  increase: (id: number) => void;
-  decrease: (id: number) => void;
+  remove: (key: string) => void;
+  increase: (key: string) => void;
+  decrease: (key: string) => void;
   next: () => void;
   shop: () => void;
 }) {
   const grouped = Object.values(
-    items.reduce<Record<number, { p: P; qty: number }>>((acc, p) => {
-      acc[p.id] ??= { p, qty: 0 };
-      acc[p.id].qty++;
+    items.reduce<Record<string, { p: P; qty: number }>>((acc, p) => {
+      const key=p.cartKey||String(p.id);acc[key] ??= { p, qty: 0 };
+      acc[key].qty++;
       return acc;
     }, {}),
   );
@@ -909,7 +923,7 @@ function CartV2({
             </div>
             {grouped.map(({ p, qty }) => (
               <article
-                key={p.id}
+                key={p.cartKey||p.id}
                 className="grid grid-cols-[86px_minmax(0,1fr)] gap-4 border-b border-zinc-100 p-4 last:border-b-0 md:grid-cols-[110px_minmax(0,1fr)_110px_120px] md:items-center md:gap-5 md:p-5"
               >
                 <Visual p={p} />
@@ -920,10 +934,10 @@ function CartV2({
                   <h2 className="mt-2 text-sm font-bold leading-5 md:text-base">
                     {p.name}
                   </h2>
-                  <p className="mt-1 text-[10px] text-zinc-500">標準規格</p>
+                  <p className="mt-1 text-[10px] text-zinc-500">{p.selectedOptions&&Object.keys(p.selectedOptions).length?Object.entries(p.selectedOptions).map(([name,value])=>`${name}：${value}`).join("／"):"標準規格"}</p>
                   <b className="mt-3 block text-xs md:hidden">{nt(p.price)}</b>
                   <button
-                    onClick={() => remove(p.id)}
+                    onClick={() => remove(p.cartKey||String(p.id))}
                     className="mt-3 border-0 bg-transparent p-0 text-[10px] text-zinc-400 underline"
                   >
                     移除商品
@@ -932,7 +946,7 @@ function CartV2({
                 <div className="col-start-2 flex w-max items-center border border-zinc-300 md:col-start-auto">
                   <button
                     aria-label={`減少 ${p.name} 數量`}
-                    onClick={() => decrease(p.id)}
+                    onClick={() => decrease(p.cartKey||String(p.id))}
                     className="h-9 w-9 border-0 bg-white text-lg"
                   >
                     −
@@ -942,7 +956,7 @@ function CartV2({
                   </span>
                   <button
                     aria-label={`增加 ${p.name} 數量`}
-                    onClick={() => increase(p.id)}
+                    onClick={() => increase(p.cartKey||String(p.id))}
                     className="h-9 w-9 border-0 bg-white text-lg"
                   >
                     ＋
