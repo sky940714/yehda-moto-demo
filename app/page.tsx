@@ -354,7 +354,7 @@ export default function App() {
       <header>
         <button className="logo" onClick={() => go("home")}>
           <img
-            src="/media/yada-logo-transparent-hd.png"
+            src="/media/yada-logo-header.png"
             alt="燁達機車精品店 YADA MOTORCYCLE"
           />
         </button>
