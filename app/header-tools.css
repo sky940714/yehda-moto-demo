@@ -4,6 +4,16 @@
   padding: 3px 0;
 }
 
+.siteHeader {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+  will-change: transform;
+}
+
+.siteHeaderHidden {
+  transform: translateY(-105%);
+  box-shadow: none;
+}
+
 @media (min-width: 721px) {
   body > div > header { height: 146px; }
 }

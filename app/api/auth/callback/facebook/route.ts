@@ -34,13 +34,17 @@ export async function GET(request: Request) {
     const token = (await tokenResponse.json()) as { access_token?: string };
     if (!token.access_token) throw new Error("Facebook did not return an access token");
 
-    const profileQuery = new URLSearchParams({ fields: "id,name,email", access_token: token.access_token });
+    const profileQuery = new URLSearchParams({ fields: "id,name", access_token: token.access_token });
     const profileResponse = await fetch(`https://graph.facebook.com/${version}/me?${profileQuery}`, { cache: "no-store" });
     if (!profileResponse.ok) throw new Error(`Facebook profile request failed: ${profileResponse.status}`);
-    const profile = (await profileResponse.json()) as { id?: string; name?: string; email?: string };
-    if (!profile.id || !profile.email) throw new Error("Facebook 帳號未提供 Email");
+    const profile = (await profileResponse.json()) as { id?: string; name?: string };
+    if (!profile.id) throw new Error("Facebook 帳號未提供可識別的會員資料");
 
-    const result = await oauthLogin("facebook", profile.id, profile.email, profile.name || "會員");
+    // Facebook no longer guarantees an email address. This internal address is
+    // never presented as a customer contact address; it only satisfies the
+    // unique account field while the Facebook account remains the login key.
+    const internalEmail = `facebook-${profile.id}@social.yada.motorcycles`;
+    const result = await oauthLogin("facebook", profile.id, internalEmail, profile.name || "會員");
     jar.set("yada_session", result.session, {
       httpOnly: true,
       sameSite: "lax",

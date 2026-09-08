@@ -232,7 +232,8 @@ export default function App() {
     [catalogError, setCatalogError] = useState(""),
     [categoryOrder, setCategoryOrder] = useState(cats.slice(1)),
     [lang, setLang] = useState<"zh" | "en">("zh"),
-    [customerStoreReady, setCustomerStoreReady] = useState(false);
+    [customerStoreReady, setCustomerStoreReady] = useState(false),
+    [navigationHidden, setNavigationHidden] = useState(false);
   useAutoTranslate(lang);
   const tx = (zh: string, en: string) => (lang === "zh" ? zh : en);
   useEffect(() => {
@@ -277,10 +278,35 @@ export default function App() {
     else if (action === "complete") { setMemberLoggedIn(true); setPage("account"); history.replaceState({}, "", "/"); }
     else if (params.get("authError")) {
       const authError = params.get("authError");
-      setToast(authError === "facebook_cancelled" ? "你已取消 Facebook 登入。" : authError === "facebook" ? "Facebook 登入失敗，請確認帳號已提供 Email。" : "社群登入失敗，請重新嘗試。");
+      setToast(authError === "facebook_cancelled" ? "你已取消 Facebook 登入。" : authError === "facebook" ? "Facebook 登入失敗，請稍後再試。" : "社群登入失敗，請重新嘗試。");
       setPage("login"); history.replaceState({}, "", "/");
     }
     return()=>{window.removeEventListener("focus",refreshCatalog);document.removeEventListener("visibilitychange",refreshCatalog);};
+  }, []);
+  useEffect(() => {
+    let previousPosition = window.scrollY;
+    let frame = 0;
+    const updateNavigation = () => {
+      frame = 0;
+      const currentPosition = window.scrollY;
+      const distance = currentPosition - previousPosition;
+      if (currentPosition < 96 || Math.abs(distance) < 8) {
+        if (currentPosition < 96) setNavigationHidden(false);
+      } else if (distance > 0) {
+        setNavigationHidden(true);
+      } else {
+        setNavigationHidden(false);
+      }
+      previousPosition = currentPosition;
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateNavigation);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
@@ -351,7 +377,7 @@ export default function App() {
   const selectionComplete=Boolean(picked)&&(!pickedSpecifications.length||(activeVariants.length?Boolean(selectedVariant):pickedSpecifications.every((group)=>Boolean(selectedOptions[group.name]))));
   return (
     <div>
-      <header>
+      <header className={navigationHidden ? "siteHeader siteHeaderHidden" : "siteHeader"}>
         <button className="logo" onClick={() => go("home")}>
           <img
             src="/media/yada-logo-header.png"
@@ -1080,7 +1106,7 @@ function SocialAuth(){
     <div className="bg-white p-7 text-[#17181d] lg:p-12"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">MEMBER SIGN IN</p><h2 className="mt-3 text-3xl font-black">登入／建立會員</h2><p className="mt-3 text-xs leading-6 text-zinc-500">首次登入後需補填手機號碼，作為訂單與取貨聯絡使用。</p>
       <a href="/api/auth/google" className="mt-8 flex min-h-14 items-center justify-center border border-zinc-300 bg-white px-5 text-sm font-bold text-[#17181d] hover:border-[#654cff]">使用 Google 繼續</a>
       <a href="/api/auth/facebook" className="mt-3 flex min-h-14 items-center justify-center border border-[#1877f2] bg-[#1877f2] px-5 text-sm font-bold text-white hover:bg-[#166fe5]">使用 Facebook 繼續</a>
-      <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。會員帳號會依社群平台已驗證的 Email 自動合併。</p>
+      <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。Facebook 登入不會向本站提供你的密碼；收件資料會在結帳時由你確認。</p>
     </div>
   </div></section>;
 }

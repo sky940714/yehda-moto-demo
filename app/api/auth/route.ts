@@ -9,7 +9,10 @@ const link = (request: Request, action: string, token: string) => `${new URL(req
 
 export async function GET() {
   const jar = await cookies();
-  return NextResponse.json({ user: await currentUser(jar.get(COOKIE)?.value) });
+  const user = await currentUser(jar.get(COOKIE)?.value);
+  // Internal social-login identifiers are not customer email addresses.
+  const publicUser = user?.email.endsWith("@social.yada.motorcycles") ? { ...user, email: "" } : user;
+  return NextResponse.json({ user: publicUser });
 }
 
 export async function POST(request: Request) {

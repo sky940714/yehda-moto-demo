@@ -23,7 +23,10 @@ export async function GET(request: Request) {
     client_id: clientId,
     redirect_uri: `${origin}/api/auth/callback/facebook`,
     response_type: "code",
-    scope: "email,public_profile",
+    // Some Meta apps are not allowed to request the email scope.  A customer
+    // can still sign in safely with their Facebook identity and provide their
+    // contact details in the store when needed.
+    scope: "public_profile",
     state,
   });
   return NextResponse.redirect(`https://www.facebook.com/${version}/dialog/oauth?${query}`);
