@@ -25,7 +25,9 @@ type P = {
 type ProductVariant = { id?: number; sku: string; options: Record<string,string>; price: number; stock: number; image?: string; isActive: boolean };
 type CartItem = { productId:number; variantId?:number; key:string; options:Record<string,string>; price?:number; sku?:string; image?:string };
 type SavedCustomerCartItem = { productId:number; variantId?:number; options:Record<string,string>; quantity:number };
-type MemberOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; createdAt:string; returnStatus:string | null };
+type MemberOrderItem={name:string;sku:string;options:Record<string,string>;price:number;quantity:number;image:string|null};
+type MemberOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; shippingCarrier:string|null; trackingNumber:string|null; createdAt:string; returnStatus:string | null; returnNote:string | null; pointsUsed:number; pointsEarned:number; items:MemberOrderItem[] };
+type LoyaltyItem={id:number;pointsDelta:number;reason:string;note:string|null;createdAt:string};
 
 const cartFromSaved = (items: SavedCustomerCartItem[]): CartItem[] => items.flatMap((item) => Array.from({ length: Math.max(1, Math.min(99, Number(item.quantity) || 1)) }, (_, index) => ({ productId: item.productId, variantId: item.variantId, options: item.options || {}, key: `${item.productId}:${item.variantId || "standard"}:${JSON.stringify(item.options || {})}:${index}` })));
 const cartForSaving = (items: CartItem[]): SavedCustomerCartItem[] => Object.values(items.reduce<Record<string, SavedCustomerCartItem>>((result, item) => { const key = `${item.productId}:${item.variantId || 0}:${JSON.stringify(item.options || {})}`; result[key] ??= { productId: item.productId, variantId: item.variantId, options: item.options || {}, quantity: 0 }; result[key].quantity++; return result; }, {}));
@@ -224,6 +226,7 @@ export default function App() {
     [memberName, setMemberName] = useState("會員"),
     [memberEmail, setMemberEmail] = useState(""),
     [memberPhone, setMemberPhone] = useState<string | null>(null),
+    [memberAddress,setMemberAddress]=useState(""),
     [authToken, setAuthToken] = useState(""),
     [postLoginPage, setPostLoginPage] = useState("account"),
     [products, setProducts] = useState<P[]>([]),
@@ -248,11 +251,12 @@ export default function App() {
       if (Array.isArray(saved) && saved.length === cats.length - 1)
         setCategoryOrder(saved);
     } catch {}
-    fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string; email?: string; phone?: string | null } }>).then(async ({ user }) => {
+    fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string; email?: string; phone?: string | null;defaultAddress?:string } }>).then(async ({ user }) => {
       setMemberLoggedIn(Boolean(user));
       if (user?.name) setMemberName(user.name);
       if (user?.email) setMemberEmail(user.email);
       setMemberPhone(user?.phone || null);
+      setMemberAddress(user?.defaultAddress || "");
       if (user) {
         const response = await fetch("/api/customer", { cache: "no-store" });
         if (response.ok) {
@@ -762,6 +766,7 @@ export default function App() {
             name={memberName}
             email={memberEmail}
             phone={memberPhone}
+            defaultAddress={memberAddress}
             favoriteCount={fav.length}
             cartCount={cart.length}
             logout={async () => {
@@ -780,6 +785,8 @@ export default function App() {
               if (!response.ok || !data.user) return { error: data.error || "姓名儲存失敗。" };
               setMemberName(data.user.name); return {};
             }}
+            saveAddress={async(address)=>{const response=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"profileAddress",address})});const data=await response.json() as {error?:string;address?:string};if(!response.ok)return {error:data.error||"地址儲存失敗。"};setMemberAddress(data.address||"");return {};}}
+            savePhone={async(phone)=>{const response=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"phone",phone})});const data=await response.json() as {error?:string;user?:{phone?:string|null}};if(!response.ok)return {error:data.error||"手機儲存失敗。"};setMemberPhone(data.user?.phone||null);return {};}}
             shop={() => go("products")}
             favorites={() => go("favorites")}
             cart={() => go("cart")}
@@ -816,7 +823,7 @@ export default function App() {
             setStep={setStep}
             items={cp}
             total={total}
-            customerDefaults={{ name: memberName, email: memberEmail, phone: memberPhone || "" }}
+            customerDefaults={{ name: memberName, email: memberEmail, phone: memberPhone || "",address:memberAddress }}
             finish={() => {
               setCart([]);
               go("home");
@@ -1102,7 +1109,7 @@ function CartV2({
 }
 function SocialAuth(){
   return <section className="authV2 min-h-[680px] bg-[#0d0e12] px-4 py-12 text-white"><div className="mx-auto grid max-w-[920px] overflow-hidden border border-white/10 bg-[#17191f] lg:grid-cols-2">
-    <aside className="relative bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-8 lg:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YADA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">快速登入<br/>開始你的升級旅程</h1><p className="mt-5 text-xs leading-6 text-zinc-300">使用熟悉的社群帳號安全登入；我們不會取得你的 Google 或 Facebook 密碼。</p></aside>
+    <aside className="relative bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-8 lg:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YADA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">快速登入<br/>開始你的升級旅程</h1><p className="mt-5 text-xs leading-6 text-zinc-300">使用 Google 帳號安全登入；我們不會取得你的 Google 密碼。</p></aside>
     <div className="bg-white p-7 text-[#17181d] lg:p-12"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">MEMBER SIGN IN</p><h2 className="mt-3 text-3xl font-black">登入／建立會員</h2><p className="mt-3 text-xs leading-6 text-zinc-500">首次登入後需補填手機號碼，作為訂單與取貨聯絡使用。</p>
       <a href="/api/auth/google" className="mt-8 flex min-h-14 items-center justify-center border border-zinc-300 bg-white px-5 text-sm font-bold text-[#17181d] hover:border-[#654cff]">使用 Google 繼續</a>
       <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。首次登入後請補填手機號碼，供訂單與取貨聯絡使用。</p>
@@ -1554,11 +1561,14 @@ function MemberCenter({
   name,
   email,
   phone,
+  defaultAddress,
   favoriteCount,
   cartCount,
   logout,
   logoutAll,
   saveName,
+  saveAddress,
+  savePhone,
   shop,
   favorites,
   cart,
@@ -1566,11 +1576,14 @@ function MemberCenter({
   name: string;
   email: string;
   phone: string | null;
+  defaultAddress:string;
   favoriteCount: number;
   cartCount: number;
   logout: () => void;
   logoutAll: () => void;
   saveName: (name: string) => Promise<{ error?: string }>;
+  saveAddress:(address:string)=>Promise<{error?:string}>;
+  savePhone:(phone:string)=>Promise<{error?:string}>;
   shop: () => void;
   favorites: () => void;
   cart: () => void;
@@ -1578,12 +1591,18 @@ function MemberCenter({
   const [draftName, setDraftName] = useState(name);
   const [profileMessage, setProfileMessage] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [address,setAddress]=useState(defaultAddress),[addressMessage,setAddressMessage]=useState("");
+  const [phoneDraft,setPhoneDraft]=useState(phone||""),[phoneMessage,setPhoneMessage]=useState("");
   const [orders, setOrders] = useState<MemberOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [points,setPoints]=useState(0),[pointHistory,setPointHistory]=useState<LoyaltyItem[]>([]),[pointsLoading,setPointsLoading]=useState(true);
   const [returning, setReturning] = useState("");
   const [orderMessage, setOrderMessage] = useState("");
   useEffect(() => setDraftName(name), [name]);
+  useEffect(()=>setAddress(defaultAddress),[defaultAddress]);
+  useEffect(()=>setPhoneDraft(phone||""),[phone]);
   useEffect(() => { fetch("/api/member/orders", { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(); const data=await response.json() as {orders?:MemberOrder[]}; setOrders(Array.isArray(data.orders)?data.orders:[]); }).catch(()=>setOrderMessage("訂單資料暫時無法載入，請稍後重試。")).finally(()=>setOrdersLoading(false)); }, []);
+  useEffect(()=>{fetch("/api/member/loyalty",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error();const data=await response.json() as {balance?:number;transactions?:LoyaltyItem[]};setPoints(Number(data.balance||0));setPointHistory(Array.isArray(data.transactions)?data.transactions:[]);}).finally(()=>setPointsLoading(false));},[]);
   const submitName = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setProfileMessage(""); setSavingName(true);
     const result = await saveName(draftName); setSavingName(false);
@@ -1594,6 +1613,7 @@ function MemberCenter({
     setReturning(orderNumber); setOrderMessage("");
     try { const response=await fetch("/api/returns",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderNumber,reason})}); const data=await response.json() as {error?:string}; if(!response.ok) throw new Error(data.error||"退貨申請失敗。"); setOrders(current=>current.map(order=>order.number===orderNumber?{...order,returnStatus:"requested"}:order)); setOrderMessage("已送出退貨申請，店家確認後會更新處理進度。"); } catch(error) { setOrderMessage(error instanceof Error?error.message:"退貨申請失敗。"); } finally { setReturning(""); }
   };
+  const requestCancellation=async(orderNumber:string)=>{const reason=window.prompt("請填寫取消訂單原因（最多 500 字）");if(!reason?.trim())return;setReturning(orderNumber);setOrderMessage("");try{const response=await fetch("/api/orders/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderNumber,reason})});const data=await response.json() as {error?:string};if(!response.ok)throw new Error(data.error||"取消申請失敗。");setOrderMessage("已送出取消申請，店家確認後會取消訂單並回補庫存。");}catch(error){setOrderMessage(error instanceof Error?error.message:"取消申請失敗。");}finally{setReturning("");}};
   return (
     <section className="memberCenter">
       <header className="memberCenterHeader">
@@ -1621,6 +1641,8 @@ function MemberCenter({
             <div><dt>Email</dt><dd>{email || "社群帳號登入"}</dd></div>
             <div><dt>手機</dt><dd>{phone || "尚未填寫"}</dd></div>
           </dl>
+          <form className="memberNameForm" onSubmit={async event=>{event.preventDefault();setPhoneMessage("");const result=await savePhone(phoneDraft);setPhoneMessage(result.error||"手機號碼已更新。");}}><label><span>手機號碼</span><input value={phoneDraft} onChange={event=>setPhoneDraft(event.target.value)} inputMode="tel" pattern="09[0-9]{8}" required placeholder="0912345678"/></label><button type="submit">儲存手機</button>{phoneMessage&&<b className={phoneMessage.includes("失敗")?"error":"success"}>{phoneMessage}</b>}</form>
+          <form className="memberNameForm" onSubmit={async event=>{event.preventDefault();setAddressMessage("");const result=await saveAddress(address);setAddressMessage(result.error||"預設宅配地址已儲存。");}}><label><span>預設宅配地址</span><input value={address} onChange={event=>setAddress(event.target.value)} minLength={8} maxLength={500} placeholder="宅配結帳時自動帶入"/></label><button type="submit">儲存地址</button>{addressMessage&&<b className={addressMessage.includes("失敗")?"error":"success"}>{addressMessage}</b>}</form>
           <p className="memberNote">Email 由登入帳號管理。姓名已可自行更新；手機與密碼修改功能會在後續開放。</p>
         </section>
         <aside className="memberStore">
@@ -1633,14 +1655,19 @@ function MemberCenter({
           <button type="button" onClick={shop} className="memberStoreButton">繼續選購商品</button>
         </aside>
       </div>
+      <section className="memberPoints">
+        <div><p className="memberKicker">YADA POINTS</p><h2>會員點數</h2><span>每消費 NT$ 100 贈 1 點；1 點可折 NT$ 1，單筆最多折訂單金額 20%。</span></div>
+        <strong>{pointsLoading?"…":points.toLocaleString()}<small>可用點</small></strong>
+        <em>可折 NT$ {points.toLocaleString()}</em>
+      </section>
       <div className="memberCenterBottom">
         <section className="memberInfoCard">
           <p className="memberKicker">ORDER HISTORY</p><h2>我的訂單</h2>
-          {ordersLoading ? <div className="memberEmptyOrder"><b>正在讀取訂單</b>請稍候。</div> : orders.length ? <div className="memberOrders">{orders.map(order=><article key={order.number}><div><b>{order.number}</b><small>{new Date(order.createdAt).toLocaleDateString("zh-TW")} · NT$ {order.total.toLocaleString()}</small></div><p>{order.shippingMethod}</p><span>{order.status}／{order.paymentStatus}</span>{order.returnStatus ? <em>退貨：{order.returnStatus}</em> : ["shipped","completed"].includes(order.status) ? <button type="button" disabled={returning===order.number} onClick={()=>requestReturn(order.number)}>{returning===order.number?"送出中…":"申請退貨"}</button> : null}</article>)}</div> : <div className="memberEmptyOrder"><b>目前尚無正式訂單</b>完成結帳後，訂單狀態、付款與物流資訊會顯示在這裡。</div>}
+          {ordersLoading ? <div className="memberEmptyOrder"><b>正在讀取訂單</b>請稍候。</div> : orders.length ? <div className="memberOrders">{orders.map(order=><article key={order.number}><div><b>{order.number}</b><small>{new Date(order.createdAt).toLocaleDateString("zh-TW")} · NT$ {order.total.toLocaleString()}</small></div><p>{order.shippingMethod}</p><span>{order.status}／{order.paymentStatus}</span>{order.shippingCarrier&&<small>物流：{order.shippingCarrier}{order.trackingNumber?`／單號 ${order.trackingNumber}`:""}</small>}<small>點數：本筆折抵 {order.pointsUsed} 點／完成後預計獲得 {order.pointsEarned} 點</small><details className="memberOrderDetail"><summary>查看商品明細</summary>{order.items.map((item,index)=><div key={`${item.sku}-${index}`}>{item.image&&<img src={item.image} alt=""/>}<span><b>{item.name}</b><small>{Object.values(item.options).filter(Boolean).join("／")||item.sku} · NT$ {item.price.toLocaleString()} × {item.quantity}</small></span></div>)}</details>{order.returnStatus ? <><em>退貨：{order.returnStatus}</em>{order.returnNote&&<small className="returnInstruction">店家處理說明：{order.returnNote}</small>}</> : ["shipped","completed"].includes(order.status) ? <button type="button" disabled={returning===order.number} onClick={()=>requestReturn(order.number)}>{returning===order.number?"送出中…":"申請退貨"}</button> : ["pending","confirmed","preparing"].includes(order.status) ? <button type="button" disabled={returning===order.number} onClick={()=>requestCancellation(order.number)}>{returning===order.number?"送出中…":"申請取消訂單"}</button> : null}</article>)}</div> : <div className="memberEmptyOrder"><b>目前尚無正式訂單</b>完成結帳後，訂單狀態、付款與物流資訊會顯示在這裡。</div>}
           {orderMessage && <p className="memberOrderMessage">{orderMessage}</p>}
         </section>
         <section className="memberInfoCard">
-          <p className="memberKicker">MEMBERSHIP STATUS</p><h2>會員功能</h2><p className="memberStatusText">目前已啟用帳號同步、收藏與購物車。會員點數、等級與回饋會在正式訂單流程完成後再開放，避免出現不正確的帳務資料。</p>
+          <p className="memberKicker">POINT HISTORY</p><h2>點數明細</h2>{pointsLoading?<p className="memberStatusText">正在讀取點數資料。</p>:pointHistory.length?<div className="memberPointHistory">{pointHistory.map(item=><div key={item.id}><span><b>{item.note||item.reason}</b><small>{new Date(item.createdAt).toLocaleDateString("zh-TW")}</small></span><strong className={item.pointsDelta>0?"plus":"minus"}>{item.pointsDelta>0?"+":""}{item.pointsDelta} 點</strong></div>)}</div>:<p className="memberStatusText">尚無點數紀錄。完成訂單且過退貨期後，點數會自動入帳。</p>}
         </section>
       </div>
     </section>
@@ -2176,16 +2203,17 @@ function CheckoutFlow({
   setStep: (n: number) => void;
   items: P[];
   total: number;
-  customerDefaults: { name: string; email: string; phone: string };
+  customerDefaults: { name: string; email: string; phone: string;address:string };
   finish: () => void;
 }) {
   const [shipMethod, setShipMethod] = useState("blackcat");
   const [selectedStore, setSelectedStore] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"ecpay_card" | "ecpay_atm" | "ecpay_cvs" | "cod">("ecpay_card");
-  const [customer, setCustomer] = useState({ name: customerDefaults.name, email: customerDefaults.email, phone: customerDefaults.phone, address: "", note: "" });
+  const [customer, setCustomer] = useState({ name: customerDefaults.name, email: customerDefaults.email, phone: customerDefaults.phone, address: customerDefaults.address, note: "" });
   const [order, setOrder] = useState<{ number: string; payment: string; total: number } | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [availablePoints,setAvailablePoints]=useState(0),[pointsToUse,setPointsToUse]=useState(0);
   const shipFees: Record<string, number> = {
     blackcat: 0,
     post: 80,
@@ -2196,6 +2224,8 @@ function CheckoutFlow({
   };
   const isHome = shipMethod === "blackcat" || shipMethod === "post";
   const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
+  const maxPoints=Math.min(availablePoints,Math.floor(total*0.2));
+  useEffect(()=>{fetch("/api/member/loyalty").then(async response=>{if(!response.ok)return;const data=await response.json() as {balance?:number};setAvailablePoints(Number(data.balance||0));}).catch(()=>{});},[]);
   const cvs =
     shipMethod === "family"
       ? {
@@ -2224,7 +2254,7 @@ function CheckoutFlow({
   const submitOrder = async () => {
     setSubmitError(""); setSubmitting(true);
     try {
-      const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingMethod: shipMethod, paymentMethod, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, address: customer.address, note: customer.note, store: isCvs && selectedStore === shipMethod ? { id: cvs.id, name: cvs.name, address: cvs.address, brand: cvs.brand } : undefined }) });
+      const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingMethod: shipMethod, paymentMethod, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, address: customer.address, note: customer.note, pointsUsed:Math.min(Math.max(0,Math.trunc(pointsToUse)),maxPoints), store: isCvs && selectedStore === shipMethod ? { id: cvs.id, name: cvs.name, address: cvs.address, brand: cvs.brand } : undefined }) });
       const data = await response.json() as { error?: string; orderNumber?: string; paymentMethod?: string; total?: number };
       if (!response.ok || !data.orderNumber) throw new Error(data.error || "建立訂單失敗。");
       setOrder({ number: data.orderNumber, payment: data.paymentMethod || paymentMethod, total: data.total || total });
@@ -2437,6 +2467,7 @@ function CheckoutFlow({
               <div className="notice">
                 ⓘ 信用卡、ATM 與超商代碼會使用綠界測試環境；卡號資料只會在綠界付款頁輸入。
                 </div>
+              <label className="mt-4 block border border-[#d9d3ff] bg-[#f6f4ff] p-4 text-xs font-bold text-[#31266f]">使用會員點數（可用 {availablePoints} 點；本筆最多 {maxPoints} 點）<input className="mt-2 block w-full border border-[#bdb4f4] bg-white px-3 py-2" type="number" min="0" max={maxPoints} value={pointsToUse} onChange={event=>setPointsToUse(Math.min(maxPoints,Math.max(0,Number(event.target.value)||0)))} /><small className="mt-2 block font-normal text-[#655b95]">1 點折 NT$ 1，最高折商品金額 20%，不折運費。</small></label>
             </>
           )}
           {submitError && <p className="mt-4 border border-red-200 bg-red-50 p-3 text-xs text-red-700">{submitError}</p>}
@@ -2447,7 +2478,7 @@ function CheckoutFlow({
           </button>
         </div>
         <Summary
-          total={total || 6980}
+          total={Math.max(0,(total || 6980)-pointsToUse)}
           shipping={shipFees[shipMethod]}
         />
       </div>

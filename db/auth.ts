@@ -3,7 +3,7 @@ import { compare, hash } from "bcryptjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 export type UserRole = "customer" | "staff" | "manager" | "admin" | "owner";
-export type PublicUser = { id: string; name: string; email: string; phone: string | null; emailVerified: boolean; role: UserRole };
+export type PublicUser = { id: string; name: string; email: string; phone: string | null; defaultAddress?:string; emailVerified: boolean; role: UserRole };
 type UserRecord = PublicUser & { passwordHash: string | null; sessionVersion: number };
 type TokenKind = "verify" | "reset";
 
@@ -31,6 +31,7 @@ async function schema(db: Pool) {
       id CHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL,
       email VARCHAR(254) NOT NULL UNIQUE, phone VARCHAR(20) NULL UNIQUE,
       password_hash VARCHAR(255) NULL, email_verified_at DATETIME NULL,
+      default_address VARCHAR(500) NULL,
       session_version INT UNSIGNED NOT NULL DEFAULT 1,
       role ENUM('customer','staff','manager','admin','owner') NOT NULL DEFAULT 'customer',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -41,6 +42,7 @@ async function schema(db: Pool) {
     } catch (error) {
       if ((error as { code?: string }).code !== "ER_DUP_FIELDNAME") throw error;
     }
+    try { await db.execute("ALTER TABLE users ADD COLUMN default_address VARCHAR(500) NULL AFTER phone"); } catch (error) { if ((error as { code?: string }).code !== "ER_DUP_FIELDNAME") throw error; }
     await db.execute(`CREATE TABLE IF NOT EXISTS auth_tokens (
       token_hash CHAR(64) PRIMARY KEY, user_id CHAR(36) NOT NULL,
       kind ENUM('verify','reset') NOT NULL, expires_at DATETIME NOT NULL,
@@ -69,18 +71,18 @@ async function schema(db: Pool) {
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const adminEmail = () => (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-const publicUser = (u: UserRecord): PublicUser => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: u.emailVerified, role: u.role });
+const publicUser = (u: UserRecord): PublicUser => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, defaultAddress:u.defaultAddress||"", emailVerified: u.emailVerified, role: u.role });
 
 async function find(identifier: string): Promise<UserRecord | null> {
   const value = identifier.trim().toLowerCase();
   const db = database();
   if (!db) return [...users.values()].find((u) => u.email === value || u.phone === value) || null;
   await schema(db);
-  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; password_hash: string | null; email_verified_at: Date | null; session_version: number; role: UserRole })[]>(
-    "SELECT id,name,email,phone,password_hash,email_verified_at,session_version,role FROM users WHERE email=? OR phone=? LIMIT 1", [value, value],
+  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; default_address:string|null; password_hash: string | null; email_verified_at: Date | null; session_version: number; role: UserRole })[]>(
+    "SELECT id,name,email,phone,default_address,password_hash,email_verified_at,session_version,role FROM users WHERE email=? OR phone=? LIMIT 1", [value, value],
   );
   const u = rows[0];
-  return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, passwordHash: u.password_hash, emailVerified: Boolean(u.email_verified_at), sessionVersion: u.session_version, role: u.role || "customer" } : null;
+  return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, defaultAddress:u.default_address||"", passwordHash: u.password_hash, emailVerified: Boolean(u.email_verified_at), sessionVersion: u.session_version, role: u.role || "customer" } : null;
 }
 
 export async function registerUser(name: string, email: string, phone: string, password: string) {
@@ -137,8 +139,8 @@ export async function currentUser(raw?: string): Promise<PublicUser | null> {
   const key = digest(raw), db = database();
   if (!db) { const s = sessions.get(key), u = s && users.get(s.userId); return s && u && s.expiresAt > Date.now() && s.version === u.sessionVersion ? publicUser(u) : null; }
   await schema(db);
-  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; email_verified_at: Date | null; role: UserRole })[]>(`SELECT u.id,u.name,u.email,u.phone,u.email_verified_at,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version WHERE s.token_hash=? AND s.expires_at>NOW() LIMIT 1`, [key]);
-  const u = rows[0]; return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, emailVerified: Boolean(u.email_verified_at), role: u.role || "customer" } : null;
+  const [rows] = await db.query<(RowDataPacket & { id: string; name: string; email: string; phone: string | null; default_address:string|null; email_verified_at: Date | null; role: UserRole })[]>(`SELECT u.id,u.name,u.email,u.phone,u.default_address,u.email_verified_at,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id AND u.session_version=s.session_version WHERE s.token_hash=? AND s.expires_at>NOW() LIMIT 1`, [key]);
+  const u = rows[0]; return u ? { id: u.id, name: u.name, email: u.email, phone: u.phone, defaultAddress:u.default_address||"", emailVerified: Boolean(u.email_verified_at), role: u.role || "customer" } : null;
 }
 
 export async function adminPasswordLogin(email: string, password: string) {
@@ -186,7 +188,7 @@ export async function oauthLogin(provider: string, providerAccountId: string, em
   return {user:publicUser(user!),session:await issueSession(user!)};
 }
 
-async function findUserById(id:string):Promise<UserRecord|null>{const db=database();if(!db)return users.get(id)||null;const [rows]=await db.query<(RowDataPacket&{id:string;name:string;email:string;phone:string|null;password_hash:string|null;email_verified_at:Date|null;session_version:number;role:UserRole})[]>("SELECT id,name,email,phone,password_hash,email_verified_at,session_version,role FROM users WHERE id=?",[id]);const u=rows[0];return u?{id:u.id,name:u.name,email:u.email,phone:u.phone,passwordHash:u.password_hash,emailVerified:Boolean(u.email_verified_at),sessionVersion:u.session_version,role:u.role||"customer"}:null;}
+async function findUserById(id:string):Promise<UserRecord|null>{const db=database();if(!db)return users.get(id)||null;const [rows]=await db.query<(RowDataPacket&{id:string;name:string;email:string;phone:string|null;default_address:string|null;password_hash:string|null;email_verified_at:Date|null;session_version:number;role:UserRole})[]>("SELECT id,name,email,phone,default_address,password_hash,email_verified_at,session_version,role FROM users WHERE id=?",[id]);const u=rows[0];return u?{id:u.id,name:u.name,email:u.email,phone:u.phone,defaultAddress:u.default_address||"",passwordHash:u.password_hash,emailVerified:Boolean(u.email_verified_at),sessionVersion:u.session_version,role:u.role||"customer"}:null;}
 
 export function isAdmin(user: PublicUser | null): user is PublicUser {
   return Boolean(user && ["staff", "manager", "admin", "owner"].includes(user.role));
@@ -203,3 +205,4 @@ export async function saveCustomerName(userId: string, name: string) {
   return publicUser(user);
 }
 export async function savePhone(userId:string,phone:string){phone=phone.trim();if(!/^09\d{8}$/.test(phone))throw new Error("手機號碼必須是 09 開頭的 10 位數字。");const db=database();if(!db){if([...users.values()].some(u=>u.phone===phone&&u.id!==userId))throw new Error("此手機號碼已被使用。");const u=users.get(userId);if(u)u.phone=phone;}else{try{await db.execute("UPDATE users SET phone=? WHERE id=?",[phone,userId]);}catch(e){if((e as {code?:string}).code==="ER_DUP_ENTRY")throw new Error("此手機號碼已被使用。");throw e;}}return findUserById(userId);}
+export async function saveDefaultAddress(userId:string,address:string){const clean=address.trim().replace(/\s+/g," ");if(clean&&(clean.length<8||clean.length>500))throw new Error("請填寫完整的宅配地址。");const db=database();if(!db){const u=users.get(userId);if(u)u.defaultAddress=clean;}else{await schema(db);await db.execute("UPDATE users SET default_address=? WHERE id=?",[clean||null,userId]);}return clean;}

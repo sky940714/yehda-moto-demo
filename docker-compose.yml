@@ -2,7 +2,7 @@ services:
   db:
     image: mysql:8.4
     restart: unless-stopped
-    command: --innodb-buffer-pool-size=256M --max-connections=40 --performance-schema=OFF
+    command: --innodb-buffer-pool-size=256M --max-connections=120 --wait-timeout=300 --interactive-timeout=300 --performance-schema=OFF
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -26,6 +26,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID:-}
@@ -45,6 +46,10 @@ services:
       ECPAY_HASH_IV: ${ECPAY_HASH_IV:-}
       ECPAY_RETURN_URL: ${ECPAY_RETURN_URL:-}
       ECPAY_ORDER_RESULT_URL: ${ECPAY_ORDER_RESULT_URL:-}
+      STORE_RETURN_ADDRESS: ${STORE_RETURN_ADDRESS:-}
+      STORE_RETURN_RECIPIENT: ${STORE_RETURN_RECIPIENT:-}
+      STORE_RETURN_PHONE: ${STORE_RETURN_PHONE:-}
+      STORE_NOTIFICATION_EMAIL: ${STORE_NOTIFICATION_EMAIL:-}
     depends_on:
       db:
         condition: service_healthy

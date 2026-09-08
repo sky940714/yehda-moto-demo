@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { currentUser, loginUser, logout, logoutAll, registerUser, requestReset, resetPassword, saveCustomerName, savePhone, verifyEmail } from "../../../db/auth";
+import { currentUser, loginUser, logout, logoutAll, registerUser, requestReset, resetPassword, saveCustomerName, saveDefaultAddress, savePhone, verifyEmail } from "../../../db/auth";
 import { isSecureRequest } from "../../../db/http";
 
 const COOKIE = "yada_session";
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     if (action === "logoutAll") { const user=await currentUser(jar.get(COOKIE)?.value); if(!user)return jsonError("尚未登入。",401); await logoutAll(user.id); jar.delete(COOKIE); return NextResponse.json({ ok:true }); }
     if (action === "phone") { const user=await currentUser(jar.get(COOKIE)?.value); if(!user)return jsonError("登入已失效，請重新登入。",401); return NextResponse.json({user:await savePhone(user.id,String(body.phone||""))}); }
     if (action === "profileName") { const user=await currentUser(jar.get(COOKIE)?.value); if(!user)return jsonError("登入已失效，請重新登入。",401); return NextResponse.json({user:await saveCustomerName(user.id,String(body.name||""))}); }
+    if (action === "profileAddress") { const user=await currentUser(jar.get(COOKIE)?.value); if(!user)return jsonError("登入已失效，請重新登入。",401); return NextResponse.json({address:await saveDefaultAddress(user.id,String(body.address||""))}); }
     return jsonError("不支援的操作。");
   } catch (error) { console.error("Auth error", error); return jsonError(error instanceof Error ? error.message : "系統暫時無法處理。", 400); }
 }
