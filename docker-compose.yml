@@ -38,6 +38,13 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
       R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+      APP_URL: ${APP_URL:-}
+      ECPAY_ENV: ${ECPAY_ENV:-stage}
+      ECPAY_MERCHANT_ID: ${ECPAY_MERCHANT_ID:-}
+      ECPAY_HASH_KEY: ${ECPAY_HASH_KEY:-}
+      ECPAY_HASH_IV: ${ECPAY_HASH_IV:-}
+      ECPAY_RETURN_URL: ${ECPAY_RETURN_URL:-}
+      ECPAY_ORDER_RESULT_URL: ${ECPAY_ORDER_RESULT_URL:-}
     depends_on:
       db:
         condition: service_healthy

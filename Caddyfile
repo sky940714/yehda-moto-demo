@@ -1,4 +1,8 @@
-:80 {
+yada.motorcycles, www.yada.motorcycles {
   encode zstd gzip
-  reverse_proxy app:3000
+  reverse_proxy app:3000 {
+    header_up Host {http.request.host}
+    header_up X-Forwarded-Host {http.request.host}
+    header_up X-Forwarded-Proto {scheme}
+  }
 }

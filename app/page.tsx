@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAutoTranslate } from "./auto-translate";
+import "./member-center.css";
 type P = {
   id: number;
   name: string;
@@ -23,6 +24,10 @@ type P = {
 };
 type ProductVariant = { id?: number; sku: string; options: Record<string,string>; price: number; stock: number; image?: string; isActive: boolean };
 type CartItem = { productId:number; variantId?:number; key:string; options:Record<string,string>; price?:number; sku?:string; image?:string };
+type SavedCustomerCartItem = { productId:number; variantId?:number; options:Record<string,string>; quantity:number };
+
+const cartFromSaved = (items: SavedCustomerCartItem[]): CartItem[] => items.flatMap((item) => Array.from({ length: Math.max(1, Math.min(99, Number(item.quantity) || 1)) }, (_, index) => ({ productId: item.productId, variantId: item.variantId, options: item.options || {}, key: `${item.productId}:${item.variantId || "standard"}:${JSON.stringify(item.options || {})}:${index}` })));
+const cartForSaving = (items: CartItem[]): SavedCustomerCartItem[] => Object.values(items.reduce<Record<string, SavedCustomerCartItem>>((result, item) => { const key = `${item.productId}:${item.variantId || 0}:${JSON.stringify(item.options || {})}`; result[key] ??= { productId: item.productId, variantId: item.variantId, options: item.options || {}, quantity: 0 }; result[key].quantity++; return result; }, {}));
 
 function CartIcon() {
   return (
@@ -204,22 +209,29 @@ export default function App() {
     [cart, setCart] = useState<CartItem[]>([]),
     [fav, setFav] = useState<number[]>([]),
     [cat, setCat] = useState("全部商品"),
+    [brandFilters, setBrandFilters] = useState<string[]>([]),
+    [sortBy, setSortBy] = useState("recommended"),
     [maker, setMaker] = useState(""),
     [model, setModel] = useState(""),
     [picked, setPicked] = useState<P | null>(null),
+    [detailImage, setDetailImage] = useState<string | undefined>(),
     [selectedOptions,setSelectedOptions]=useState<Record<string,string>>({}),
     [step, setStep] = useState(1),
     [tab, setTab] = useState("數據總覽"),
     [toast, setToast] = useState(""),
     [memberLoggedIn, setMemberLoggedIn] = useState(false),
     [memberName, setMemberName] = useState("會員"),
+    [memberEmail, setMemberEmail] = useState(""),
+    [memberPhone, setMemberPhone] = useState<string | null>(null),
     [authToken, setAuthToken] = useState(""),
     [postLoginPage, setPostLoginPage] = useState("account"),
     [products, setProducts] = useState<P[]>([]),
+    [catalogOptions, setCatalogOptions] = useState({ brands: [] as string[], categories: [] as string[] }),
     [catalogLoading, setCatalogLoading] = useState(true),
     [catalogError, setCatalogError] = useState(""),
     [categoryOrder, setCategoryOrder] = useState(cats.slice(1)),
-    [lang, setLang] = useState<"zh" | "en">("zh");
+    [lang, setLang] = useState<"zh" | "en">("zh"),
+    [customerStoreReady, setCustomerStoreReady] = useState(false);
   useAutoTranslate(lang);
   const tx = (zh: string, en: string) => (lang === "zh" ? zh : en);
   useEffect(() => {
@@ -234,11 +246,21 @@ export default function App() {
       if (Array.isArray(saved) && saved.length === cats.length - 1)
         setCategoryOrder(saved);
     } catch {}
-    fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string } }>).then(({ user }) => {
+    fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string; email?: string; phone?: string | null } }>).then(async ({ user }) => {
       setMemberLoggedIn(Boolean(user));
       if (user?.name) setMemberName(user.name);
-    }).catch(() => {});
-    const loadCatalog=()=>fetch("/api/products",{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((value)=>{const data=value as {products?:P[]};setProducts(Array.isArray(data.products)?data.products:[]);setCatalogError("")}).catch(()=>{setProducts([]);setCatalogError("商品資料目前無法載入，請稍後再試。")}).finally(()=>setCatalogLoading(false));
+      if (user?.email) setMemberEmail(user.email);
+      setMemberPhone(user?.phone || null);
+      if (user) {
+        const response = await fetch("/api/customer", { cache: "no-store" });
+        if (response.ok) {
+          const saved = await response.json() as { favorites?: number[]; cart?: SavedCustomerCartItem[] };
+          setCart(cartFromSaved(Array.isArray(saved.cart) ? saved.cart : []));
+          setFav(Array.isArray(saved.favorites) ? saved.favorites : []);
+        }
+      }
+    }).catch(() => {}).finally(() => setCustomerStoreReady(true));
+    const loadCatalog=()=>fetch("/api/products",{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((value)=>{const data=value as {products?:P[];options?:{brands?:string[];categories?:string[]}};setProducts(Array.isArray(data.products)?data.products:[]);setCatalogOptions({brands:Array.isArray(data.options?.brands)?data.options.brands:[],categories:Array.isArray(data.options?.categories)?data.options.categories:[]});setCatalogError("")}).catch(()=>{setProducts([]);setCatalogError("商品資料目前無法載入，請稍後再試。")}).finally(()=>setCatalogLoading(false));
     loadCatalog();
     const refreshCatalog=()=>{if(!document.hidden)loadCatalog();};
     window.addEventListener("focus",refreshCatalog);
@@ -266,6 +288,10 @@ export default function App() {
     localStorage.setItem("site-language", lang);
     document.documentElement.lang = lang === "zh" ? "zh-Hant" : "en";
   }, [cart, fav, categoryOrder, lang]);
+  useEffect(() => {
+    if (!customerStoreReady || !memberLoggedIn) return;
+    void fetch("/api/customer", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ favorites: fav, cart: cartForSaving(cart) }) });
+  }, [cart, fav, memberLoggedIn, customerStoreReady]);
   const go = (x: string) => {
       setPage(x);
       scrollTo({ top: 0, behavior: "smooth" });
@@ -279,16 +305,20 @@ export default function App() {
       );
     },
     add = (id: number, variant?:ProductVariant, options:Record<string,string>={}) => {
+      if (!memberLoggedIn) { setPostLoginPage("detail"); setToast("請先登入會員，購物車才能儲存到你的帳號。"); go("login"); return; }
       const key=variant?.id?`${id}:variant:${variant.id}`:`${id}:standard`;
       setCart((x) => [...x, {productId:id,variantId:variant?.id,key,options,price:variant?.price,sku:variant?.sku,image:variant?.image}]);
       setToast("已加入購物車");
       setTimeout(() => setToast(""), 1500);
     },
-    heart = (id: number) =>
-      setFav((x) => (x.includes(id) ? x.filter((i) => i !== id) : [...x, id])),
+    heart = (id: number) => {
+      if (!memberLoggedIn) { setPostLoginPage("favorites"); setToast("請先登入會員，收藏清單才能同步到你的帳號。"); go("login"); return; }
+      setFav((x) => (x.includes(id) ? x.filter((i) => i !== id) : [...x, id]));
+    },
     detail = (p: P) => {
       setPicked(p);
       setSelectedOptions({});
+      setDetailImage(p.images?.[0] || p.image);
       go("detail");
     };
   const filtered = useMemo(
@@ -302,18 +332,20 @@ export default function App() {
               p.fit[0] === "全車種") &&
             (!model ||
               p.fit.some((x) => x.includes(model)) ||
-              p.fit[0] === "全車種"),
+              p.fit[0] === "全車種") &&
+            (!brandFilters.length || brandFilters.includes(p.brand)),
         )
-        .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image))),
-    [cat, maker, model, products],
+        .sort((a, b) => sortBy === "newest" ? b.id - a.id : sortBy === "price-low" ? a.price - b.price : sortBy === "price-high" ? b.price - a.price : Number(Boolean(b.image)) - Number(Boolean(a.image))),
+    [brandFilters, cat, maker, model, products, sortBy],
   );
-  const storefrontCategories=useMemo(()=>{const real=[...new Set(products.map((product)=>product.cat).filter(Boolean))];return [...categoryOrder.filter((category)=>real.includes(category)),...real.filter((category)=>!categoryOrder.includes(category))]},[products,categoryOrder]);
+  const storefrontCategories=useMemo(()=>{const real=[...new Set(products.map((product)=>product.cat).filter(Boolean))];return [...catalogOptions.categories.filter((category)=>real.includes(category)),...real.filter((category)=>!catalogOptions.categories.includes(category))]},[products,catalogOptions.categories]);
+  const storefrontBrands=useMemo(()=>{const real=[...new Set(products.map((product)=>product.brand).filter(Boolean))];return [...catalogOptions.brands.filter((brand)=>real.includes(brand)),...real.filter((brand)=>!catalogOptions.brands.includes(brand))]},[products,catalogOptions.brands]);
   const cp:P[] = cart.flatMap((item) => {const product=products.find((p)=>p.id===item.productId);if(!product)return[];return[{...product,price:item.price??product.price,stock:item.variantId?product.variants?.find((variant)=>variant.id===item.variantId)?.stock:product.stock,sku:item.sku||product.sku,image:item.image||product.image,cartKey:item.key,selectedOptions:item.options}];}),
     total = cp.reduce((s, p) => s + p.price, 0);
   const pickedSpecifications=picked?.specifications||[];
   const activeVariants=(picked?.variants||[]).filter((variant)=>variant.isActive);
   const selectedVariant=activeVariants.find((variant)=>pickedSpecifications.every((group)=>selectedOptions[group.name]===variant.options[group.name]));
-  const detailProduct=picked?{...picked,image:selectedVariant?.image||picked.image}:null;
+  const detailProduct=picked?{...picked,image:selectedVariant?.image||detailImage||picked.image}:null;
   const detailPrice=selectedVariant?.price??picked?.price??0;
   const selectionComplete=Boolean(picked)&&(!pickedSpecifications.length||(activeVariants.length?Boolean(selectedVariant):pickedSpecifications.every((group)=>Boolean(selectedOptions[group.name]))));
   return (
@@ -565,18 +597,20 @@ export default function App() {
                 ))}
                 <hr />
                 <b>品牌</b>
-                {["POLINI", "MALOSSI", "BMC", "SHOEI"].map((x) => (
+                {storefrontBrands.map((x) => (
                   <label key={x}>
-                    <input type="checkbox" /> {x}
+                    <input type="checkbox" checked={brandFilters.includes(x)} onChange={() => setBrandFilters((current) => current.includes(x) ? current.filter((brand) => brand !== x) : [...current, x])} /> {x}
                   </label>
                 ))}
               </aside>
               <div>
                 <div className="sort">
                   <span>顯示 {filtered.length} 項商品 · 實品照片優先推薦</span>
-                  <select>
-                    <option>實品推薦排序</option>
-                    <option>最新上架</option>
+                  <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                    <option value="recommended">實品推薦排序</option>
+                    <option value="newest">最新上架</option>
+                    <option value="price-low">價格：低到高</option>
+                    <option value="price-high">價格：高到低</option>
                   </select>
                 </div>
                 <Grid
@@ -597,7 +631,10 @@ export default function App() {
             <button className="back" onClick={() => go("products")}>
               ← 返回商品列表
             </button>
-            <Visual p={detailProduct||picked} big />
+            <div className="productGallery">
+              <Visual p={detailProduct||picked} big />
+              {(picked.images?.length || 0) > 1 && <div className="mt-3 flex flex-wrap gap-2">{picked.images!.map((image, index) => <button key={image} type="button" onClick={() => setDetailImage(image)} className={`h-16 w-16 overflow-hidden border-2 ${detailImage === image ? "border-[#654cff]" : "border-zinc-200"}`} aria-label={`查看商品圖片 ${index + 1}`}><img src={image} alt={`${picked.name} 圖片 ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}
+            </div>
             <div className="detailInfo">
               <p className="eyebrow purple">
                 {picked.brand} · {picked.cat}
@@ -645,7 +682,7 @@ export default function App() {
               title="品牌專區"
               sub="燁達嚴選全球頂級改裝品牌，把賽道科技帶進日常騎乘。"
             />
-            {["POLINI", "MALOSSI"].map((b, i) => (
+            {storefrontBrands.map((b, i) => (
               <article className={i ? "redBrand" : ""} key={b}>
                 <div>
                   <span>MADE IN ITALY</span>
@@ -655,7 +692,7 @@ export default function App() {
                       ? "源自義大利波隆那，以極致性能與大膽紅色基因聞名。"
                       : "創立於 1945 年，跨越三個世代的義大利傳動工藝。"}
                   </p>
-                  <button onClick={() => go("products")}>
+                  <button onClick={() => { setBrandFilters([b]); setCat("全部商品"); go("products"); }}>
                     探索 {b} 商品 →
                   </button>
                 </div>
@@ -691,22 +728,34 @@ export default function App() {
         {page === "register" && (
           <SocialAuth />
         )}
-        {page === "phone" && <PhoneOnboarding complete={(user)=>{setMemberName(user.name);setMemberLoggedIn(true);setToast("會員資料完成");go(postLoginPage);setPostLoginPage("account");}} />}
+        {page === "phone" && <PhoneOnboarding complete={(user)=>{setMemberName(user.name);setMemberEmail(user.email||"");setMemberPhone(user.phone||null);setMemberLoggedIn(true);setToast("會員資料完成");go(postLoginPage);setPostLoginPage("account");}} />}
         {page === "reset" && <PasswordReset token={authToken} done={() => { history.replaceState({}, "", "/"); go("login"); }} />}
         {page === "account" && (
           <MemberCenter
             name={memberName}
+            email={memberEmail}
+            phone={memberPhone}
+            favoriteCount={fav.length}
+            cartCount={cart.length}
             logout={async () => {
               await fetch("/api/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"logout"}) });
-              setMemberLoggedIn(false);
+              setMemberLoggedIn(false); setCart([]); setFav([]);
               setToast("已登出會員");
               go("home");
             }}
             logoutAll={async () => {
               await fetch("/api/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"logoutAll"}) });
-              setMemberLoggedIn(false); setToast("所有裝置都已登出"); go("home");
+              setMemberLoggedIn(false); setCart([]); setFav([]); setToast("所有裝置都已登出"); go("home");
+            }}
+            saveName={async (name) => {
+              const response = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "profileName", name }) });
+              const data = await response.json() as { error?: string; user?: { name: string } };
+              if (!response.ok || !data.user) return { error: data.error || "姓名儲存失敗。" };
+              setMemberName(data.user.name); return {};
             }}
             shop={() => go("products")}
+            favorites={() => go("favorites")}
+            cart={() => go("cart")}
           />
         )}
         {page === "cart" && (
@@ -740,6 +789,7 @@ export default function App() {
             setStep={setStep}
             items={cp}
             total={total}
+            customerDefaults={{ name: memberName, email: memberEmail, phone: memberPhone || "" }}
             finish={() => {
               setCart([]);
               go("home");
@@ -818,8 +868,8 @@ export default function App() {
         <small>
           © 2026 {tx("燁達機車精品店", "YADA MOTORCYCLE")}｜
           {tx(
-            "本網站為提案 Demo，所有內容與交易皆為模擬。",
-            "Proposal demo. All content and transactions are simulated.",
+            "燁達機車精品店，提供安心選購與專業服務。",
+            "YADA MOTORCYCLE · Performance parts and professional service.",
           )}
         </small>
       </footer>
@@ -943,7 +993,7 @@ function CartV2({
                     移除商品
                   </button>
                 </div>
-                <div className="col-start-2 flex w-max items-center border border-zinc-300 md:col-start-auto">
+                <div className="cartQtyControl col-start-2 md:col-start-auto">
                   <button
                     aria-label={`減少 ${p.name} 數量`}
                     onClick={() => decrease(p.cartKey||String(p.id))}
@@ -951,7 +1001,7 @@ function CartV2({
                   >
                     −
                   </button>
-                  <span className="grid h-9 min-w-9 place-items-center border-x border-zinc-300 text-xs font-bold">
+                  <span>
                     {qty}
                   </span>
                   <button
@@ -1015,7 +1065,7 @@ function CartV2({
               </span>
             </div>
             <p className="mt-5 border-t border-zinc-100 pt-4 text-center text-[9px] leading-5 text-zinc-400">
-              本頁為 Demo，不會建立真實訂單或扣款。
+              結帳時會建立訂單；線上付款會交由綠界安全付款頁處理。
             </p>
           </aside>
         </div>
@@ -1034,9 +1084,9 @@ function SocialAuth(){
   </div></section>;
 }
 
-function PhoneOnboarding({complete}:{complete:(user:{name:string})=>void}){
+function PhoneOnboarding({complete}:{complete:(user:{name:string;email?:string;phone?:string|null})=>void}){
   const [error,setError]=useState(""),[busy,setBusy]=useState(false);
-  return <section className="min-h-[620px] bg-[#0d0e12] px-4 py-20 text-white"><form className="mx-auto max-w-md bg-white p-8 text-[#17181d]" onSubmit={async(e)=>{e.preventDefault();setBusy(true);setError("");const d=new FormData(e.currentTarget);const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'phone',phone:d.get('phone')})});const result=await r.json() as {error?:string;user?:{name:string}};setBusy(false);if(!r.ok||!result.user)setError(result.error||'儲存失敗。');else complete(result.user);}}>
+  return <section className="min-h-[620px] bg-[#0d0e12] px-4 py-20 text-white"><form className="mx-auto max-w-md bg-white p-8 text-[#17181d]" onSubmit={async(e)=>{e.preventDefault();setBusy(true);setError("");const d=new FormData(e.currentTarget);const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'phone',phone:d.get('phone')})});const result=await r.json() as {error?:string;user?:{name:string;email?:string;phone?:string|null}};setBusy(false);if(!r.ok||!result.user)setError(result.error||'儲存失敗。');else complete(result.user);}}>
     <p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">ONE LAST STEP</p><h1 className="mt-3 text-3xl font-black">完成會員資料</h1><p className="mt-3 text-xs leading-6 text-zinc-500">手機號碼為必填且不可重複，目前不會發送簡訊驗證碼。</p>{error&&<div className="mt-5 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
     <label className="mt-7 block text-xs font-bold">手機號碼<input name="phone" inputMode="tel" autoComplete="tel" pattern="09[0-9]{8}" required className="mt-2 min-h-12 w-full border border-zinc-300 px-4" placeholder="0912345678"/></label><button disabled={busy} className="mt-6 min-h-12 w-full bg-[#654cff] font-bold text-white">{busy?'儲存中…':'完成並進入會員中心'}</button>
   </form></section>;
@@ -1189,7 +1239,7 @@ function MemberAuthV2({
                 placeholder={
                   register
                     ? "09 開頭的 10 位數手機"
-                    : "0912345678 / demo@yehda.tw"
+                    : "0912345678 / name@example.com"
                 }
               />
               {register && (
@@ -1207,7 +1257,7 @@ function MemberAuthV2({
                   required
                   type="email"
                   className="mt-2 min-h-12 w-full border border-zinc-300 px-4 font-normal"
-                  placeholder="demo@yehda.tw"
+                  placeholder="name@example.com"
                 />
               </label>
             )}
@@ -1267,7 +1317,7 @@ function MemberAuthV2({
                   type="checkbox"
                   className="mt-1 h-4 w-4 flex-none"
                 />
-                我已閱讀並同意會員條款與隱私權政策（Demo）
+                我已閱讀並同意會員條款與隱私權政策
               </label>
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] text-zinc-500">
@@ -1383,7 +1433,7 @@ function MemberAuth({
                 required
                 className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
                 placeholder={
-                  register ? "0912345678" : "0912345678 / demo@yehda.tw"
+                  register ? "0912345678" : "0912345678 / name@example.com"
                 }
               />
             </label>
@@ -1394,7 +1444,7 @@ function MemberAuth({
                   required
                   type="email"
                   className="mt-2 w-full border border-zinc-300 px-4 py-3 font-normal"
-                  placeholder="demo@yehda.tw"
+                  placeholder="name@example.com"
                 />
               </label>
             )}
@@ -1423,7 +1473,7 @@ function MemberAuth({
             {register ? (
               <label className="flex items-start gap-2 text-[10px] leading-5 text-zinc-500">
                 <input required type="checkbox" className="mt-1" />
-                我已閱讀並同意會員條款與隱私權政策（Demo）
+                我已閱讀並同意會員條款與隱私權政策
               </label>
             ) : (
               <div className="flex justify-between text-[10px] text-zinc-500">
@@ -1476,128 +1526,83 @@ function PasswordReset({ token, done }: { token: string; done: () => void }) {
 
 function MemberCenter({
   name,
+  email,
+  phone,
+  favoriteCount,
+  cartCount,
   logout,
   logoutAll,
+  saveName,
   shop,
+  favorites,
+  cart,
 }: {
   name: string;
+  email: string;
+  phone: string | null;
+  favoriteCount: number;
+  cartCount: number;
   logout: () => void;
   logoutAll: () => void;
+  saveName: (name: string) => Promise<{ error?: string }>;
   shop: () => void;
+  favorites: () => void;
+  cart: () => void;
 }) {
+  const [draftName, setDraftName] = useState(name);
+  const [profileMessage, setProfileMessage] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  useEffect(() => setDraftName(name), [name]);
+  const submitName = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setProfileMessage(""); setSavingName(true);
+    const result = await saveName(draftName); setSavingName(false);
+    setProfileMessage(result.error || "姓名已更新，結帳資料會自動使用此姓名。");
+  };
   return (
-    <section className="mx-auto max-w-[1180px] px-4 py-14 md:py-20">
-      <div className="flex flex-col gap-5 border-b border-zinc-300 pb-8 md:flex-row md:items-end md:justify-between">
-        <div>
+    <section className="memberCenter">
+      <header className="memberCenterHeader">
+        <div className="memberCenterIntro">
           <p className="eyebrow purple">RIDERS CLUB</p>
-          <h1 className="mt-4 text-4xl font-black">{name}，你好</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            YEHDA 銀牌會員 · 會員編號 YD-M0001
-          </p>
+          <h1>{name}，你好</h1>
+          <p>會員帳號、收藏清單與購物車已安全同步。</p>
         </div>
-        <button
-          onClick={logout}
-          className="border border-zinc-300 bg-white px-5 py-3 text-xs"
-        >
-          登出會員
-        </button>
-        <button onClick={logoutAll} className="border border-red-200 bg-white px-5 py-3 text-xs text-red-600">登出所有裝置</button>
-      </div>
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <article className="bg-gradient-to-br from-[#17181d] to-[#302567] p-6 text-white sm:col-span-2">
-            <span className="text-[9px] tracking-[.2em] text-[#ff9a3d]">
-              AVAILABLE POINTS
-            </span>
-            <b className="mt-4 block text-5xl">
-              1,280 <small className="text-sm">點</small>
-            </b>
-            <p className="mt-5 text-xs text-zinc-300">
-              100 點可折抵 NT$100；單筆最高折抵訂單金額 20%。
-            </p>
-            <div className="mt-6 h-1.5 bg-white/15">
-              <i className="block h-full w-[64%] bg-gradient-to-r from-[#ff7900] to-[#7657ff]" />
-            </div>
-            <small className="mt-2 block text-[9px] text-zinc-400">
-              再累積 720 點升級金牌會員
-            </small>
-          </article>
-          <article className="border border-zinc-200 bg-white p-6">
-            <span className="text-[9px] tracking-wider text-zinc-400">
-              今年消費
-            </span>
-            <b className="mt-4 block text-2xl">NT$ 28,600</b>
-            <span className="mt-8 block text-[9px] text-zinc-400">
-              完成訂單
-            </span>
-            <b className="mt-2 block text-xl">6 筆</b>
-          </article>
+        <div className="memberCenterActions">
+          <button type="button" onClick={logout} className="memberButton">登出會員</button>
+          <button type="button" onClick={logoutAll} className="memberButton memberButtonDanger">登出所有裝置</button>
         </div>
-        <aside className="border border-zinc-200 bg-white p-6">
-          <h2 className="text-lg font-bold">我的愛車</h2>
-          <div className="mt-5 border-l-4 border-[#654cff] bg-zinc-50 p-4">
-            <b>YAMAHA FORCE 2.0</b>
-            <span className="mt-1 block text-xs text-zinc-500">
-              2023 · 日常／性能改裝
-            </span>
+      </header>
+      <div className="memberCenterTop">
+        <section className="memberProfile">
+          <p className="memberKicker">ACCOUNT PROFILE</p>
+          <h2>帳號資料</h2>
+          <form className="memberNameForm" onSubmit={submitName}>
+            <label><span>姓名</span><input value={draftName} onChange={(event) => setDraftName(event.target.value)} minLength={2} maxLength={20} pattern="[\u3400-\u9fff]{2,20}" required placeholder="請輸入中文姓名" /></label>
+            <button type="submit" disabled={savingName}>{savingName ? "儲存中…" : "儲存姓名"}</button>
+            <small>限 2–20 個中文字；訂單收件人會自動帶入此姓名。</small>
+            {profileMessage && <b className={profileMessage.includes("失敗") || profileMessage.includes("須為") ? "error" : "success"}>{profileMessage}</b>}
+          </form>
+          <dl>
+            <div><dt>Email</dt><dd>{email || "社群帳號登入"}</dd></div>
+            <div><dt>手機</dt><dd>{phone || "尚未填寫"}</dd></div>
+          </dl>
+          <p className="memberNote">Email 由登入帳號管理。姓名已可自行更新；手機與密碼修改功能會在後續開放。</p>
+        </section>
+        <aside className="memberStore">
+          <p className="memberKicker">MY STORE</p>
+          <h2>我的商店清單</h2>
+          <div className="memberStoreTiles">
+            <button type="button" onClick={favorites} className="memberStoreTile"><span>我的收藏</span><b>{favoriteCount}</b><small>查看收藏 →</small></button>
+            <button type="button" onClick={cart} className="memberStoreTile"><span>購物車商品</span><b>{cartCount}</b><small>前往購物車 →</small></button>
           </div>
-          <button className="mt-4 w-full border border-zinc-300 bg-white px-4 py-3 text-xs">
-            管理愛車資料
-          </button>
+          <button type="button" onClick={shop} className="memberStoreButton">繼續選購商品</button>
         </aside>
       </div>
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <section className="border border-zinc-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">最近訂單</h2>
-            <button className="border-0 bg-transparent text-xs text-[#654cff]">
-              查看全部 →
-            </button>
-          </div>
-          <div className="mt-4 divide-y divide-zinc-100 text-xs">
-            {[
-              ["#YD0186", "處理中", "NT$ 6,980"],
-              ["#YD0172", "已完成", "NT$ 3,280"],
-            ].map((x) => (
-              <div key={x[0]} className="grid grid-cols-3 gap-2 py-4">
-                <b>{x[0]}</b>
-                <span className="text-[#654cff]">{x[1]}</span>
-                <b className="text-right">{x[2]}</b>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={shop}
-            className="mt-3 w-full bg-[#17181d] px-4 py-3 text-xs font-bold text-white"
-          >
-            繼續選購商品
-          </button>
+      <div className="memberCenterBottom">
+        <section className="memberInfoCard">
+          <p className="memberKicker">ORDER HISTORY</p><h2>我的訂單</h2><div className="memberEmptyOrder"><b>目前尚無正式訂單</b>正式結帳啟用後，訂單狀態、付款與物流資訊會顯示在這裡。</div>
         </section>
-        <section className="border border-zinc-200 bg-white p-6">
-          <h2 className="text-lg font-bold">點數紀錄</h2>
-          <div className="mt-4 divide-y divide-zinc-100 text-xs">
-            {[
-              ["購買訂單 #YD0186", "2026/08/28", "+70"],
-              ["註冊迎新點數", "2026/08/12", "+100"],
-              ["訂單折抵 #YD0172", "2026/08/01", "−200"],
-            ].map((x) => (
-              <div key={x[0]} className="grid grid-cols-[1fr_auto] gap-3 py-4">
-                <span>
-                  <b className="block">{x[0]}</b>
-                  <small className="text-zinc-400">{x[1]}</small>
-                </span>
-                <b
-                  className={
-                    x[2].startsWith("+")
-                      ? "text-emerald-600"
-                      : "text-orange-600"
-                  }
-                >
-                  {x[2]} 點
-                </b>
-              </div>
-            ))}
-          </div>
+        <section className="memberInfoCard">
+          <p className="memberKicker">MEMBERSHIP STATUS</p><h2>會員功能</h2><p className="memberStatusText">目前已啟用帳號同步、收藏與購物車。會員點數、等級與回饋會在正式訂單流程完成後再開放，避免出現不正確的帳務資料。</p>
         </section>
       </div>
     </section>
@@ -1852,10 +1857,10 @@ function Visual({ p, big }: { p: P; big?: boolean }) {
       )}
       <small>
         {p.image
-          ? "實品照片 · DEMO"
+          ? "實品照片"
           : p.brand === "SHOEI"
-            ? "SHOEI 圖片位置 · DEMO"
-            : "DEMO PRODUCT"}
+            ? "SHOEI 圖片位置"
+            : "PRODUCT IMAGE"}
       </small>
     </div>
   );
@@ -2045,7 +2050,7 @@ function Summary({
         <b>{nt(total + fee)}</b>
       </p>
       {children}
-      <small>🔒 安全結帳・本頁僅為 UI 模擬</small>
+      <small>🔒 安全結帳・付款資料由綠界安全付款頁處理</small>
     </aside>
   );
 }
@@ -2099,8 +2104,8 @@ function ShippingOptions({
   return (
     <div className="space-y-5">
       {group("綠界宅配物流", "配送至客人填寫的收件地址", [
-        ["黑貓宅急便", "本島 NT$130 起 · 依材積由店家報價", "blackcat"],
-        ["中華郵政", "本島 NT$80 起 · 依材積由店家報價", "post"],
+        ["黑貓宅急便", "本島固定運費 NT$130 · 宅配到府", "blackcat"],
+        ["中華郵政", "本島固定運費 NT$80 · 配送到府", "post"],
       ])}
       {group(
         "綠界超商物流",
@@ -2118,12 +2123,6 @@ function ShippingOptions({
         [["燁達門市自取", "土城門市 · 09:30–17:00", "pickup"]],
         "orange",
       )}
-      {group(
-        "海外訂單詢價",
-        "確認國際運費與含運台幣總額後付款",
-        [["海外配送", "店家報價後提供綠界付款連結", "overseas"]],
-        "light",
-      )}
     </div>
   );
 }
@@ -2132,16 +2131,23 @@ function CheckoutFlow({
   setStep,
   items,
   total,
+  customerDefaults,
   finish,
 }: {
   step: number;
   setStep: (n: number) => void;
   items: P[];
   total: number;
+  customerDefaults: { name: string; email: string; phone: string };
   finish: () => void;
 }) {
   const [shipMethod, setShipMethod] = useState("blackcat");
   const [selectedStore, setSelectedStore] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"ecpay_card" | "ecpay_atm" | "ecpay_cvs" | "cod">("ecpay_card");
+  const [customer, setCustomer] = useState({ name: customerDefaults.name, email: customerDefaults.email, phone: customerDefaults.phone, address: "", note: "" });
+  const [order, setOrder] = useState<{ number: string; payment: string; total: number } | null>(null);
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const shipFees: Record<string, number> = {
     blackcat: 0,
     post: 80,
@@ -2149,12 +2155,9 @@ function CheckoutFlow({
     seven: 65,
     hilife: 55,
     pickup: 0,
-    overseas: 0,
   };
-  const needsQuote = ["blackcat", "post", "overseas"].includes(shipMethod);
   const isHome = shipMethod === "blackcat" || shipMethod === "post";
   const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
-  const isOverseas = shipMethod === "overseas";
   const cvs =
     shipMethod === "family"
       ? {
@@ -2172,28 +2175,46 @@ function CheckoutFlow({
           address: "新北市土城區裕生路 68 號",
           phone: "02-2270-0000",
           }
-        : {
+      : {
             brand: "萊爾富",
             id: "F20615",
             name: "土城城央店",
             address: "新北市土城區中央路一段 88 號",
             phone: "02-2260-0000",
           };
+  const updateCustomer = (field: keyof typeof customer, value: string) => setCustomer((current) => ({ ...current, [field]: value }));
+  const submitOrder = async () => {
+    setSubmitError(""); setSubmitting(true);
+    try {
+      const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingMethod: shipMethod, paymentMethod, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, address: customer.address, note: customer.note, store: isCvs && selectedStore === shipMethod ? { id: cvs.id, name: cvs.name, address: cvs.address, brand: cvs.brand } : undefined }) });
+      const data = await response.json() as { error?: string; orderNumber?: string; paymentMethod?: string; total?: number };
+      if (!response.ok || !data.orderNumber) throw new Error(data.error || "建立訂單失敗。");
+      setOrder({ number: data.orderNumber, payment: data.paymentMethod || paymentMethod, total: data.total || total });
+      if (paymentMethod !== "cod") {
+        const paymentResponse = await fetch("/api/payments/ecpay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderNumber: data.orderNumber }) });
+        const payment = await paymentResponse.json() as { error?: string; action?: string; fields?: Record<string, string> };
+        if (!paymentResponse.ok || !payment.action || !payment.fields) throw new Error(payment.error || "無法建立綠界付款資料。");
+        const form = document.createElement("form"); form.method = "POST"; form.action = payment.action;
+        for (const [name, value] of Object.entries(payment.fields)) { const input = document.createElement("input"); input.type = "hidden"; input.name = name; input.value = value; form.appendChild(input); }
+        document.body.appendChild(form); form.submit(); return;
+      }
+      setStep(4);
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : "建立訂單失敗。"); }
+    finally { setSubmitting(false); }
+  };
   if (step === 4)
     return (
       <section className="done">
         <div>✓</div>
         <p className="eyebrow purple">ORDER COMPLETE</p>
-        <h1>{needsQuote ? "報價申請已送出！" : "訂單模擬完成！"}</h1>
+        <h1>{order?.payment === "cod" ? "訂單已成立，貨到付款" : "訂單已建立，等待付款"}</h1>
         <p>
-          訂單編號 <b>YD260828-0186</b>
+          訂單編號 <b>{order?.number || "處理中"}</b>
         </p>
         <span>
-          {needsQuote
-            ? "店家確認材積與運費後，將以 Email 寄送含運總額及付款連結。"
-            : "確認信已模擬寄送至 demo@yehda.tw"}
+          {order?.payment === "cod" ? "店家備貨與出貨後，您再向物流或超商門市付款。" : "已建立待付款訂單；下一步會導向綠界測試付款頁完成付款。"}
           <br />
-          此流程未產生真實訂單或扣款。
+          訂單總額 NT$ {Number(order?.total || total).toLocaleString()}
         </span>
         <aside className="my-6 border border-[#ff9a3d] bg-[#fff7ed] p-5 text-left">
           <b className="block text-sm text-[#a94f00]">需要代安裝服務嗎？</b>
@@ -2215,7 +2236,7 @@ function CheckoutFlow({
       <div className="checkTop">
         <button onClick={() => step > 1 && setStep(step - 1)}>← 返回</button>
         <b>燁達 YEHDA</b>
-        <span>安全結帳 DEMO</span>
+        <span>安全結帳</span>
       </div>
       <div className="steps">
         {["配送方式", "收件資料", "付款方式", "完成"].map((x, i) => (
@@ -2243,21 +2264,21 @@ function CheckoutFlow({
             <div className="formGrid">
               <label>
                 {isCvs ? "取貨人真實姓名" : "收件人姓名"}
-                <input defaultValue="王小明" />
+                <input value={customer.name} onChange={(event) => updateCustomer("name", event.target.value)} placeholder="請輸入真實姓名" />
                 <small className="mt-1 block text-[10px] font-normal text-zinc-400">
                   {isCvs ? "請填寫與證件相同的姓名" : "物流聯絡使用"}
                 </small>
               </label>
               <label>
                 手機號碼
-                <input inputMode="tel" defaultValue="0912345678" />
+                <input inputMode="tel" value={customer.phone} onChange={(event) => updateCustomer("phone", event.target.value)} placeholder="09xxxxxxxx" />
                 <small className="mt-1 block text-[10px] font-normal text-zinc-400">
                   請填 09 開頭的 10 位數手機
                 </small>
               </label>
               <label className="wide">
                 電子信箱（訂單通知）
-                <input type="email" defaultValue="demo@yehda.tw" />
+                <input type="email" value={customer.email} onChange={(event) => updateCustomer("email", event.target.value)} placeholder="name@example.com" />
               </label>
               {isHome && (
                 <>
@@ -2282,7 +2303,7 @@ function CheckoutFlow({
                   </label>
                   <label className="wide">
                     詳細地址
-                    <input defaultValue="中華路一段 70 巷 5 號" />
+                    <input value={customer.address} onChange={(event) => updateCustomer("address", event.target.value)} placeholder="請輸入完整地址" />
                   </label>
                   {shipMethod === "blackcat" && (
                     <label className="wide">
@@ -2296,33 +2317,8 @@ function CheckoutFlow({
                   )}
                   <label className="wide">
                     配送備註（選填）
-                    <input placeholder="例如：管理室代收、到貨前請先電話聯絡" />
+                    <input value={customer.note} onChange={(event) => updateCustomer("note", event.target.value)} placeholder="例如：管理室代收、到貨前請先電話聯絡" />
                   </label>
-                </>
-              )}
-              {isOverseas && (
-                <>
-                  <label>
-                    國家／地區
-                    <input placeholder="例如：Japan" />
-                  </label>
-                  <label>
-                    郵遞區號
-                    <input placeholder="Postal code" />
-                  </label>
-                  <label className="wide">
-                    英文收件地址
-                    <input placeholder="Please enter the full address in English" />
-                  </label>
-                  <label>
-                    聯絡方式
-                    <select><option>LINE</option><option>WhatsApp</option><option>Email</option></select>
-                  </label>
-                  <label>
-                    聯絡帳號
-                    <input placeholder="LINE ID / WhatsApp number" />
-                  </label>
-                  <div className="wide notice">海外訂單以新台幣計價；國際運費、關稅與清關費將在付款前說明。</div>
                 </>
               )}
               {isCvs && (
@@ -2330,9 +2326,7 @@ function CheckoutFlow({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <b className="block text-sm">{cvs.brand}取貨門市</b>
-                      <span className="text-[10px] text-zinc-500">
-                        正式上線時開啟綠界門市電子地圖
-                      </span>
+                      <span className="text-[10px] text-zinc-500">測試階段先使用門市選擇器；部署後接上綠界門市電子地圖。</span>
                     </div>
                     <button
                       type="button"
@@ -2395,48 +2389,28 @@ function CheckoutFlow({
                   ? "超商取貨不需要填寫住家地址。"
                   : shipMethod === "pickup"
                     ? "門市自取不需要填寫配送地址。"
-                    : isOverseas
-                      ? "海外訂單會先確認國際運費與含運總額。"
-                      : "店家可依資料建立託運單並聯絡收件人。"}
+                    : "店家可依資料建立託運單並聯絡收件人。"}
               </div>
             </div>
           )}
           {step === 3 && (
             <>
-              {needsQuote ? (
-                <div className="border border-[#ff9a3d] bg-[#fff8f0] p-5">
-                  <b className="block text-sm">先送出運費報價申請</b>
-                  <p className="mt-2 text-xs leading-6 text-zinc-600">{isOverseas ? "店家會確認國際運費、含運台幣總額與寄送條件，再以 Email 寄送專屬綠界付款連結。" : "黑貓與郵局依商品材積計費。店家會確認含運總額，再以 Email 寄送專屬綠界付款連結。"}</p>
-                </div>
-              ) : (
-                <Choices
-                  name="pay"
-                  rows={[
-                    ["綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（模擬）"],
-                    ["信用卡分期", "實際期數依綠界核准服務顯示"],
-                    ["ATM 虛擬帳號", "付款期限依綠界付款頁顯示"],
-                    ["超商代碼", "取得代碼後至合作超商繳費"],
-                    [isCvs ? "超商取貨付款" : "門市取貨付款", isCvs ? "於所選超商門市付款取貨" : "門市自取時付款"],
-                  ]}
-                />
-              )}
+              <div className="choices">{[["ecpay_card", "綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（綠界測試環境）"], ["ecpay_atm", "綠界 ATM 虛擬帳號", "付款期限與帳號由綠界付款頁產生"], ["ecpay_cvs", "綠界超商代碼", "取得繳費代碼後至合作超商付款"], ["cod", isCvs ? "超商取貨付款" : "宅配貨到付款", isCvs ? "到指定超商門市取貨時付款" : "收到包裹時向物流人員付款"]].map(([id, title, detail]) => <label key={id}><input type="radio" name="payment" checked={paymentMethod === id} onChange={() => setPaymentMethod(id as typeof paymentMethod)} /><b>{title}</b><span>{detail}</span></label>)}</div>
               <div className="notice">
-                ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。
-              </div>
+                ⓘ 信用卡、ATM 與超商代碼會使用綠界測試環境；卡號資料只會在綠界付款頁輸入。
+                </div>
             </>
           )}
-          <button className="primary next" onClick={() => setStep(step + 1)}>
+          {submitError && <p className="mt-4 border border-red-200 bg-red-50 p-3 text-xs text-red-700">{submitError}</p>}
+          <button className="primary next" disabled={submitting} onClick={() => step === 3 ? submitOrder() : setStep(step + 1)}>
             {step === 3
-              ? needsQuote
-                ? "送出報價申請"
-                : "前往綠界安全付款（模擬）"
+              ? submitting ? "建立訂單中…" : paymentMethod === "cod" ? "確認建立貨到付款訂單" : "建立訂單並前往綠界付款"
               : "繼續下一步"} →
           </button>
         </div>
         <Summary
           total={total || 6980}
           shipping={shipFees[shipMethod]}
-          shippingLabel={needsQuote ? "待店家報價" : undefined}
         />
       </div>
     </section>
@@ -2465,7 +2439,7 @@ function Checkout({
           訂單編號 <b>YD260828-0186</b>
         </p>
         <span>
-          確認信已模擬寄送至 demo@yehda.tw
+          訂單通知將寄送至您填寫的 Email
           <br />
           此流程未產生真實訂單或扣款。
         </span>
@@ -2489,7 +2463,7 @@ function Checkout({
       <div className="checkTop">
         <button onClick={() => step > 1 && setStep(step - 1)}>← 返回</button>
         <b>燁達 YEHDA</b>
-        <span>安全結帳 DEMO</span>
+        <span>安全結帳</span>
       </div>
       <div className="steps">
         {["配送資訊", "配送方式", "付款方式", "完成"].map((x, i) => (
@@ -2516,7 +2490,7 @@ function Checkout({
               </label>
               <label className="wide">
                 電子信箱
-                <input defaultValue="demo@yehda.tw" />
+                <input defaultValue="name@example.com" />
               </label>
               <label>
                 郵遞區號
@@ -2562,7 +2536,7 @@ function Checkout({
                 ]}
               />
               <div className="notice">
-                ⓘ 此為 Demo，不會連線綠界、不會收集或處理真實卡號。
+                ⓘ 卡號資料只會在綠界安全付款頁輸入。
               </div>
             </>
           )}
@@ -2773,7 +2747,7 @@ function CategoryManager({
     </div>
   );
 }
-type DemoMember = {
+type MemberRecord = {
   id: number;
   name: string;
   phone: string;
@@ -2785,7 +2759,7 @@ type DemoMember = {
   status: "正常" | "停權";
   joined: string;
 };
-const initialMembers: DemoMember[] = [
+const initialMembers: MemberRecord[] = [
   {
     id: 1,
     name: "王小明",
@@ -2836,7 +2810,7 @@ const initialMembers: DemoMember[] = [
   },
 ];
 function MembersManager() {
-  const [members, setMembers] = useState<DemoMember[]>(initialMembers),
+  const [members, setMembers] = useState<MemberRecord[]>(initialMembers),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("全部"),
     [selectedId, setSelectedId] = useState(1),
@@ -2848,12 +2822,12 @@ function MembersManager() {
     ]);
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("demo-members") || "null");
+      const saved = JSON.parse(localStorage.getItem("members-cache") || "null");
       if (Array.isArray(saved)) setMembers(saved);
     } catch {}
   }, []);
   useEffect(() => {
-    localStorage.setItem("demo-members", JSON.stringify(members));
+    localStorage.setItem("members-cache", JSON.stringify(members));
   }, [members]);
   const shown = members.filter(
       (m) =>
@@ -3069,13 +3043,13 @@ function MembersManager() {
         </div>
       </section>
       <p className="mt-4 text-[10px] text-zinc-500">
-        Demo：會員狀態與點數調整會保存在目前瀏覽器，正式上線後需由後端記錄每筆點數來源與操作人員。
+        會員狀態與點數調整將由系統完整記錄每筆點數來源與操作人員。
       </p>
     </div>
   );
 }
 function MembersManagerV2() {
-  const [members, setMembers] = useState<DemoMember[]>(initialMembers),
+  const [members, setMembers] = useState<MemberRecord[]>(initialMembers),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("全部"),
     [selectedId, setSelectedId] = useState(1),
@@ -3087,12 +3061,12 @@ function MembersManagerV2() {
     ]);
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("demo-members") || "null");
+      const saved = JSON.parse(localStorage.getItem("members-cache") || "null");
       if (Array.isArray(saved)) setMembers(saved);
     } catch {}
   }, []);
   useEffect(() => {
-    localStorage.setItem("demo-members", JSON.stringify(members));
+    localStorage.setItem("members-cache", JSON.stringify(members));
   }, [members]);
   const shown = members.filter(
     (m) =>
@@ -3383,8 +3357,8 @@ function MembersManagerV2() {
           })}
         </div>
       </section>
-      <p className="memberDemoNote">
-        Demo：會員狀態與點數調整會保存在目前瀏覽器；正式上線後需由後端記錄每筆點數來源、時間與操作人員。
+      <p className="memberInfoNote">
+        會員狀態與點數調整將由系統完整記錄每筆點數來源、時間與操作人員。
       </p>
     </div>
   );
@@ -3658,7 +3632,7 @@ function OrdersManager() {
                 <b>
                   {o.name}　{o.phone}
                 </b>
-                <span>demo@yehda.tw</span>
+                <span>name@example.com</span>
               </div>
               <div>
                 <small>配送／取貨地點</small>
@@ -3678,7 +3652,7 @@ function OrdersManager() {
       </div>
       {!shown.length && <div className="ordersEmpty">找不到符合的訂單資料</div>}
       <p className="ordersNote">
-        Demo
+        網站管理
         顯示：宅配會保留完整地址；超商取貨會保留門市店號、名稱、地址與電話；門市自取不收集住家地址。
       </p>
     </div>

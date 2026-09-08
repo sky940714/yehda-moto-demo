@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const requestedReturnTo=new URL(request.url).searchParams.get("returnTo")||"/";
   const returnTo=requestedReturnTo.startsWith("/")&&!requestedReturnTo.startsWith("//")?requestedReturnTo:"/";
   jar.set("yada_oauth_return_to",returnTo,{httpOnly:true,sameSite:"lax",secure:isSecureRequest(request),path:"/",maxAge:600});
-  const origin=new URL(request.url).origin;
+  const origin=process.env.APP_URL?.replace(/\/$/, "") || new URL(request.url).origin;
   const query=new URLSearchParams({client_id:clientId,redirect_uri:`${origin}/api/auth/callback/google`,response_type:"code",scope:"openid email profile",state,prompt:"select_account"});
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${query}`);
 }

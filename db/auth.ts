@@ -191,4 +191,15 @@ async function findUserById(id:string):Promise<UserRecord|null>{const db=databas
 export function isAdmin(user: PublicUser | null): user is PublicUser {
   return Boolean(user && ["staff", "manager", "admin", "owner"].includes(user.role));
 }
+
+export async function saveCustomerName(userId: string, name: string) {
+  name = name.trim();
+  if (!/^[\u3400-\u9fff]{2,20}$/.test(name)) throw new Error("姓名須為 2 至 20 個中文字，請勿輸入英文、數字或符號。");
+  const db = database();
+  if (!db) { const user = users.get(userId); if (user) user.name = name; }
+  else { await schema(db); await db.execute("UPDATE users SET name=? WHERE id=?", [name, userId]); }
+  const user = await findUserById(userId);
+  if (!user) throw new Error("找不到會員資料。");
+  return publicUser(user);
+}
 export async function savePhone(userId:string,phone:string){phone=phone.trim();if(!/^09\d{8}$/.test(phone))throw new Error("手機號碼必須是 09 開頭的 10 位數字。");const db=database();if(!db){if([...users.values()].some(u=>u.phone===phone&&u.id!==userId))throw new Error("此手機號碼已被使用。");const u=users.get(userId);if(u)u.phone=phone;}else{try{await db.execute("UPDATE users SET phone=? WHERE id=?",[phone,userId]);}catch(e){if((e as {code?:string}).code==="ER_DUP_ENTRY")throw new Error("此手機號碼已被使用。");throw e;}}return findUserById(userId);}

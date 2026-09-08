@@ -150,6 +150,15 @@ export async function saveCatalogOption(kind:CatalogOptionKind,name:string){
   await database.execute("INSERT INTO catalog_options(kind,name,is_active) VALUES(?,?,TRUE) ON DUPLICATE KEY UPDATE is_active=TRUE",[kind,cleanName]);return cleanName;
 }
 
+export async function reorderCatalogOptions(kind: CatalogOptionKind, names: string[]) {
+  await ensure(); const ordered = [...new Set(names.map((name) => String(name).trim()).filter(Boolean))];
+  const database = db();
+  if (!database) { const values = ordered.filter((name) => memoryOptions[kind].has(name)); memoryOptions[kind] = new Set([...values, ...[...memoryOptions[kind]].filter((name) => !values.includes(name))]); return; }
+  const connection = await database.getConnection();
+  try { await connection.beginTransaction(); for (let index = 0; index < ordered.length; index++) await connection.execute("UPDATE catalog_options SET sort_order=? WHERE kind=? AND name=?", [index, kind, ordered[index]]); await connection.commit(); }
+  catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+}
+
 export async function saveProduct(input: Partial<CatalogProduct>, adminUserId: string) {
   await ensure(); const database=db(); const id=Number(input.id||0), fit=cleanList(input.fit), images=cleanList(input.images?.length?input.images:(input.image?[input.image]:[]),8), specifications=cleanSpecifications(input.specifications),variants=cleanVariants(input.variants,specifications);
   const allowedStatus=new Set(["active","draft","out_of_stock"]),allowedShipping=new Set(["small","home","quote"]);
