@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     maxAge: 600,
   });
 
-  const origin = new URL(request.url).origin;
+  const origin = process.env.APP_URL?.replace(/\/$/, "") || new URL(request.url).origin;
   const version = process.env.FACEBOOK_GRAPH_VERSION || "v23.0";
   const query = new URLSearchParams({
     client_id: clientId,

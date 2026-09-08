@@ -5,6 +5,7 @@ import { isSecureRequest } from "../../../../../db/http";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const origin = process.env.APP_URL?.replace(/\/$/, "") || url.origin;
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const providerError = url.searchParams.get("error");
@@ -12,14 +13,14 @@ export async function GET(request: Request) {
   const saved = jar.get("yada_facebook_oauth_state")?.value;
   jar.delete("yada_facebook_oauth_state");
 
-  if (providerError) return NextResponse.redirect(`${url.origin}/?authError=facebook_cancelled`);
+  if (providerError) return NextResponse.redirect(`${origin}/?authError=facebook_cancelled`);
   if (!code || !state || !saved || state !== saved) {
-    return NextResponse.redirect(`${url.origin}/?authError=invalid_state`);
+    return NextResponse.redirect(`${origin}/?authError=invalid_state`);
   }
 
   try {
     const version = process.env.FACEBOOK_GRAPH_VERSION || "v23.0";
-    const redirectUri = `${url.origin}/api/auth/callback/facebook`;
+    const redirectUri = `${origin}/api/auth/callback/facebook`;
     const tokenQuery = new URLSearchParams({
       client_id: process.env.FACEBOOK_CLIENT_ID || "",
       client_secret: process.env.FACEBOOK_CLIENT_SECRET || "",
@@ -47,9 +48,9 @@ export async function GET(request: Request) {
       path: "/",
       maxAge: 30 * 86400,
     });
-    return NextResponse.redirect(`${url.origin}/?auth=${result.user.phone ? "complete" : "phone"}`);
+    return NextResponse.redirect(`${origin}/?auth=${result.user.phone ? "complete" : "phone"}`);
   } catch (error) {
     console.error("Facebook OAuth error", error);
-    return NextResponse.redirect(`${url.origin}/?authError=facebook`);
+    return NextResponse.redirect(`${origin}/?authError=facebook`);
   }
 }

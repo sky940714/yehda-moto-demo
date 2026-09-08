@@ -94,6 +94,7 @@ export async function createOrder(userId: string, input: CheckoutInput) {
 
 export type AdminOrder = { id:number; number:string; customerName:string; customerPhone:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; createdAt:string };
 export type AdminReturn = { id:number; orderNumber:string; customerName:string; reason:string; status:string; createdAt:string; resolutionNote:string | null };
+export type CustomerOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; createdAt:string; returnStatus:string | null };
 export type EcpayOrder = { number:string; total:number; paymentMethod:string; customerName:string; itemName:string };
 
 export async function getEcpayOrder(userId: string, orderNumber: string): Promise<EcpayOrder> {
@@ -117,6 +118,12 @@ export async function createReturnRequest(userId:string, orderNumber:string, rea
   if(!order) throw new Error("找不到此訂單。"); if(!["shipped","completed"].includes(order.status)) throw new Error("此訂單目前尚未符合申請退貨的條件。");
   const [existing]=await database.query<RowDataPacket[]>("SELECT id FROM return_requests WHERE order_id=? AND status NOT IN ('rejected','cancelled') LIMIT 1",[order.id]); if(existing.length) throw new Error("此訂單已有進行中的退貨申請。");
   await database.execute("INSERT INTO return_requests(order_id,reason) VALUES(?,?)",[order.id,why]);
+}
+
+export async function listCustomerOrders(userId:string): Promise<CustomerOrder[]> {
+  await ensure(); const database=db(); if(!database)return[];
+  const [rows]=await database.query<(RowDataPacket&{order_number:string;total:number;status:string;payment_method:string;payment_status:string;shipping_method:string;created_at:Date;return_status:string|null})[]>("SELECT o.order_number,o.total,o.status,o.payment_method,o.payment_status,o.shipping_method,o.created_at,r.status AS return_status FROM orders o LEFT JOIN return_requests r ON r.order_id=o.id WHERE o.user_id=? ORDER BY o.created_at DESC,o.id DESC",[userId]);
+  return rows.map(row=>({number:row.order_number,total:Number(row.total),status:row.status,paymentMethod:row.payment_method,paymentStatus:row.payment_status,shippingMethod:row.shipping_method,createdAt:new Date(row.created_at).toISOString(),returnStatus:row.return_status}));
 }
 
 export async function listAdminOrders(): Promise<AdminOrder[]> {

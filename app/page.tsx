@@ -25,6 +25,7 @@ type P = {
 type ProductVariant = { id?: number; sku: string; options: Record<string,string>; price: number; stock: number; image?: string; isActive: boolean };
 type CartItem = { productId:number; variantId?:number; key:string; options:Record<string,string>; price?:number; sku?:string; image?:string };
 type SavedCustomerCartItem = { productId:number; variantId?:number; options:Record<string,string>; quantity:number };
+type MemberOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; createdAt:string; returnStatus:string | null };
 
 const cartFromSaved = (items: SavedCustomerCartItem[]): CartItem[] => items.flatMap((item) => Array.from({ length: Math.max(1, Math.min(99, Number(item.quantity) || 1)) }, (_, index) => ({ productId: item.productId, variantId: item.variantId, options: item.options || {}, key: `${item.productId}:${item.variantId || "standard"}:${JSON.stringify(item.options || {})}:${index}` })));
 const cartForSaving = (items: CartItem[]): SavedCustomerCartItem[] => Object.values(items.reduce<Record<string, SavedCustomerCartItem>>((result, item) => { const key = `${item.productId}:${item.variantId || 0}:${JSON.stringify(item.options || {})}`; result[key] ??= { productId: item.productId, variantId: item.variantId, options: item.options || {}, quantity: 0 }; result[key].quantity++; return result; }, {}));
@@ -1552,11 +1553,21 @@ function MemberCenter({
   const [draftName, setDraftName] = useState(name);
   const [profileMessage, setProfileMessage] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [orders, setOrders] = useState<MemberOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [returning, setReturning] = useState("");
+  const [orderMessage, setOrderMessage] = useState("");
   useEffect(() => setDraftName(name), [name]);
+  useEffect(() => { fetch("/api/member/orders", { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(); const data=await response.json() as {orders?:MemberOrder[]}; setOrders(Array.isArray(data.orders)?data.orders:[]); }).catch(()=>setOrderMessage("訂單資料暫時無法載入，請稍後重試。")).finally(()=>setOrdersLoading(false)); }, []);
   const submitName = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setProfileMessage(""); setSavingName(true);
     const result = await saveName(draftName); setSavingName(false);
     setProfileMessage(result.error || "姓名已更新，結帳資料會自動使用此姓名。");
+  };
+  const requestReturn = async (orderNumber:string) => {
+    const reason=window.prompt("請填寫退貨原因（最多 500 字）"); if(!reason?.trim()) return;
+    setReturning(orderNumber); setOrderMessage("");
+    try { const response=await fetch("/api/returns",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderNumber,reason})}); const data=await response.json() as {error?:string}; if(!response.ok) throw new Error(data.error||"退貨申請失敗。"); setOrders(current=>current.map(order=>order.number===orderNumber?{...order,returnStatus:"requested"}:order)); setOrderMessage("已送出退貨申請，店家確認後會更新處理進度。"); } catch(error) { setOrderMessage(error instanceof Error?error.message:"退貨申請失敗。"); } finally { setReturning(""); }
   };
   return (
     <section className="memberCenter">
@@ -1599,7 +1610,9 @@ function MemberCenter({
       </div>
       <div className="memberCenterBottom">
         <section className="memberInfoCard">
-          <p className="memberKicker">ORDER HISTORY</p><h2>我的訂單</h2><div className="memberEmptyOrder"><b>目前尚無正式訂單</b>正式結帳啟用後，訂單狀態、付款與物流資訊會顯示在這裡。</div>
+          <p className="memberKicker">ORDER HISTORY</p><h2>我的訂單</h2>
+          {ordersLoading ? <div className="memberEmptyOrder"><b>正在讀取訂單</b>請稍候。</div> : orders.length ? <div className="memberOrders">{orders.map(order=><article key={order.number}><div><b>{order.number}</b><small>{new Date(order.createdAt).toLocaleDateString("zh-TW")} · NT$ {order.total.toLocaleString()}</small></div><p>{order.shippingMethod}</p><span>{order.status}／{order.paymentStatus}</span>{order.returnStatus ? <em>退貨：{order.returnStatus}</em> : ["shipped","completed"].includes(order.status) ? <button type="button" disabled={returning===order.number} onClick={()=>requestReturn(order.number)}>{returning===order.number?"送出中…":"申請退貨"}</button> : null}</article>)}</div> : <div className="memberEmptyOrder"><b>目前尚無正式訂單</b>完成結帳後，訂單狀態、付款與物流資訊會顯示在這裡。</div>}
+          {orderMessage && <p className="memberOrderMessage">{orderMessage}</p>}
         </section>
         <section className="memberInfoCard">
           <p className="memberKicker">MEMBERSHIP STATUS</p><h2>會員功能</h2><p className="memberStatusText">目前已啟用帳號同步、收藏與購物車。會員點數、等級與回饋會在正式訂單流程完成後再開放，避免出現不正確的帳務資料。</p>
