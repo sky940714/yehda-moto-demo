@@ -1105,8 +1105,7 @@ function SocialAuth(){
     <aside className="relative bg-gradient-to-br from-[#5e42e5] via-[#2b245a] to-[#13141a] p-8 lg:p-12"><p className="text-[9px] font-bold tracking-[.28em] text-[#ff9a3d]">YADA RIDERS CLUB</p><h1 className="mt-5 text-4xl font-black leading-tight">快速登入<br/>開始你的升級旅程</h1><p className="mt-5 text-xs leading-6 text-zinc-300">使用熟悉的社群帳號安全登入；我們不會取得你的 Google 或 Facebook 密碼。</p></aside>
     <div className="bg-white p-7 text-[#17181d] lg:p-12"><p className="text-[9px] font-bold tracking-[.25em] text-[#654cff]">MEMBER SIGN IN</p><h2 className="mt-3 text-3xl font-black">登入／建立會員</h2><p className="mt-3 text-xs leading-6 text-zinc-500">首次登入後需補填手機號碼，作為訂單與取貨聯絡使用。</p>
       <a href="/api/auth/google" className="mt-8 flex min-h-14 items-center justify-center border border-zinc-300 bg-white px-5 text-sm font-bold text-[#17181d] hover:border-[#654cff]">使用 Google 繼續</a>
-      <a href="/api/auth/facebook" className="mt-3 flex min-h-14 items-center justify-center border border-[#1877f2] bg-[#1877f2] px-5 text-sm font-bold text-white hover:bg-[#166fe5]">使用 Facebook 繼續</a>
-      <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。Facebook 登入不會向本站提供你的密碼；收件資料會在結帳時由你確認。</p>
+      <p className="mt-7 border-t border-zinc-200 pt-5 text-[10px] leading-5 text-zinc-400">繼續即表示你同意會員條款與隱私權政策。首次登入後請補填手機號碼，供訂單與取貨聯絡使用。</p>
     </div>
   </div></section>;
 }
