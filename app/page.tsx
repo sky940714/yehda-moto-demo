@@ -2215,7 +2215,7 @@ function CheckoutFlow({
   const [submitting, setSubmitting] = useState(false);
   const [availablePoints,setAvailablePoints]=useState(0),[pointsToUse,setPointsToUse]=useState(0);
   const shipFees: Record<string, number> = {
-    blackcat: 0,
+    blackcat: 130,
     post: 80,
     family: 65,
     seven: 65,
@@ -2226,6 +2226,7 @@ function CheckoutFlow({
   const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
   const maxPoints=Math.min(availablePoints,Math.floor(total*0.2));
   useEffect(()=>{fetch("/api/member/loyalty").then(async response=>{if(!response.ok)return;const data=await response.json() as {balance?:number};setAvailablePoints(Number(data.balance||0));}).catch(()=>{});},[]);
+  useEffect(()=>{if(!isCvs&&paymentMethod==="cod")setPaymentMethod("ecpay_card");},[isCvs,paymentMethod]);
   const cvs =
     shipMethod === "family"
       ? {
@@ -2463,7 +2464,7 @@ function CheckoutFlow({
           )}
           {step === 3 && (
             <>
-              <div className="choices">{[["ecpay_card", "綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（綠界測試環境）"], ["ecpay_atm", "綠界 ATM 虛擬帳號", "付款期限與帳號由綠界付款頁產生"], ["ecpay_cvs", "綠界超商代碼", "取得繳費代碼後至合作超商付款"], ["cod", isCvs ? "超商取貨付款" : "宅配貨到付款", isCvs ? "到指定超商門市取貨時付款" : "收到包裹時向物流人員付款"]].map(([id, title, detail]) => <label key={id}><input type="radio" name="payment" checked={paymentMethod === id} onChange={() => setPaymentMethod(id as typeof paymentMethod)} /><b>{title}</b><span>{detail}</span></label>)}</div>
+              <div className="choices">{[["ecpay_card", "綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（綠界測試環境）"], ["ecpay_atm", "綠界 ATM 虛擬帳號", "付款期限與帳號由綠界付款頁產生"], ["ecpay_cvs", "綠界超商代碼", "取得繳費代碼後至合作超商付款"], ...(isCvs ? [["cod", "超商取貨付款", "到指定超商門市取貨時付款"]] : [])].map(([id, title, detail]) => <label key={id}><input type="radio" name="payment" checked={paymentMethod === id} onChange={() => setPaymentMethod(id as typeof paymentMethod)} /><b>{title}</b><span>{detail}</span></label>)}</div>
               <div className="notice">
                 ⓘ 信用卡、ATM 與超商代碼會使用綠界測試環境；卡號資料只會在綠界付款頁輸入。
                 </div>

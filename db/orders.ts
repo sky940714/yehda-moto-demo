@@ -84,6 +84,7 @@ function shipping(input: CheckoutInput, products: CatalogProduct[]) {
   const type = input.shippingMethod, online = input.paymentMethod !== "cod";
   const cvs = ["family", "seven", "hilife"].includes(type);
   if (cvs && products.some((product) => product.shippingType !== "small")) throw new Error("購物車含有不支援超商取貨的商品，請改選宅配。");
+  if (input.paymentMethod === "cod" && !cvs) throw new Error("貨到付款僅限超商取貨訂單。");
   const shippingName = type === "blackcat" ? "黑貓宅急便" : type === "post" ? "中華郵政" : type === "family" ? "全家便利商店" : type === "seven" ? "7-ELEVEN" : type === "hilife" ? "萊爾富" : "燁達門市自取";
   const fee = type === "blackcat" ? 130 : type === "post" ? 80 : type === "hilife" ? 55 : ["family", "seven"].includes(type) ? 65 : 0;
   const paymentName = input.paymentMethod === "cod" ? "貨到付款" : input.paymentMethod === "ecpay_card" ? "綠界信用卡" : input.paymentMethod === "ecpay_atm" ? "綠界 ATM 虛擬帳號" : "綠界超商代碼";
