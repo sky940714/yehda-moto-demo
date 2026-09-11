@@ -62,6 +62,21 @@ footer {
   grid-template-columns: 1.7fr repeat(4, 1fr);
 }
 
+footer div > button {
+  display: block;
+  margin: 10px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+footer a:hover,
+footer div > button:hover {
+  color: #ff942f;
+}
+
 .footerContact a {
   color: #d5d6dc;
   overflow-wrap: anywhere;

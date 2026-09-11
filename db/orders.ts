@@ -2,6 +2,7 @@ import mysql, { type Pool, type ResultSetHeader, type RowDataPacket } from "mysq
 import { randomBytes } from "node:crypto";
 import { listProducts, type CatalogProduct } from "./catalog";
 import { readCustomerStore } from "./customer-store";
+import { logisticsCheckMacValue, logisticsCredentials, logisticsEnvironment, logisticsSubtype, taipeiDate, type LogisticsValues } from "./ecpay-logistics";
 
 export type CheckoutInput = {
   shippingMethod: "blackcat" | "post" | "family" | "seven" | "hilife" | "pickup";
@@ -9,6 +10,8 @@ export type CheckoutInput = {
   customerName: string; customerEmail: string; customerPhone: string; address?: string; note?: string;
   store?: { id: string; name: string; address: string; brand: string };
   pointsUsed?: number;
+  postalCode?: string; city?: string; district?: string; deliveryTime?: "before_13" | "14_18" | "any";
+  invoiceType?: "personal" | "company"; taxId?: string; companyName?: string;
 };
 
 let pool: Pool | null | undefined;
@@ -52,6 +55,20 @@ async function ensure() {
       "ADD COLUMN loyalty_issued_at DATETIME NULL",
       "ADD COLUMN cancellation_requested_at DATETIME NULL",
       "ADD COLUMN cancellation_reason VARCHAR(500) NULL",
+      "ADD COLUMN postal_code VARCHAR(6) NULL",
+      "ADD COLUMN city VARCHAR(20) NULL",
+      "ADD COLUMN district VARCHAR(20) NULL",
+      "ADD COLUMN delivery_time VARCHAR(20) NULL",
+      "ADD COLUMN invoice_type ENUM('personal','company') NOT NULL DEFAULT 'personal'",
+      "ADD COLUMN tax_id VARCHAR(8) NULL",
+      "ADD COLUMN company_name VARCHAR(200) NULL",
+      "ADD COLUMN logistics_subtype VARCHAR(20) NULL",
+      "ADD COLUMN ecpay_logistics_id VARCHAR(20) NULL",
+      "ADD COLUMN cvs_payment_no VARCHAR(15) NULL",
+      "ADD COLUMN cvs_validation_no VARCHAR(10) NULL",
+      "ADD COLUMN booking_note VARCHAR(50) NULL",
+      "ADD COLUMN logistics_status VARCHAR(20) NULL",
+      "ADD COLUMN logistics_status_message VARCHAR(200) NULL",
     ];
     for (const change of alterations) { try { await database.execute(`ALTER TABLE orders ${change}`); } catch (error) { if (!(error instanceof Error) || !/Duplicate column/i.test(error.message)) throw error; } }
     await database.execute(`CREATE TABLE IF NOT EXISTS return_requests (
@@ -91,6 +108,12 @@ function shipping(input: CheckoutInput, products: CatalogProduct[]) {
   return { label: `${shippingName}｜${paymentName}`, fee, payment: input.paymentMethod, paymentStatus: online ? "pending" : "cod" };
 }
 
+function validTaxId(value:string){
+  if(!/^\d{8}$/.test(value))return false;
+  const weights=[1,2,1,2,1,2,4,1],sum=value.split("").reduce((total,digit,index)=>{const product=Number(digit)*weights[index];return total+Math.floor(product/10)+product%10;},0);
+  return sum%10===0||(value[6]==="7"&&(sum+1)%10===0);
+}
+
 async function expireUnpaidOrders(){
   const database=db();if(!database)return;const connection=await database.getConnection();
   try{await connection.beginTransaction();const [orders]=await connection.query<(RowDataPacket&{id:number;order_number:string;user_id:string;points_used:number})[]>("SELECT id,order_number,user_id,points_used FROM orders WHERE status NOT IN ('cancelled','completed') AND payment_status IN ('pending','unpaid') AND payment_expires_at IS NOT NULL AND payment_expires_at<NOW() AND stock_released_at IS NULL FOR UPDATE");for(const order of orders){const [items]=await connection.query<(RowDataPacket&{product_id:number;variant_id:number|null;quantity:number})[]>("SELECT product_id,variant_id,quantity FROM order_items WHERE order_id=?",[order.id]);for(const item of items){if(item.variant_id)await connection.execute("UPDATE product_variants SET stock=stock+? WHERE id=?",[item.quantity,item.variant_id]);await connection.execute("UPDATE products SET stock=stock+? WHERE id=?",[item.quantity,item.product_id]);}if(order.points_used)await connection.execute("INSERT IGNORE INTO loyalty_transactions(user_id,points_delta,balance_reason,reference_key,order_id,note) VALUES(?,?,'redeem_reversed',?,?,?)",[order.user_id,order.points_used,`redeem-reversed:${order.order_number}`,order.id,`訂單 ${order.order_number} 逾期取消，退回折抵點數`]);await connection.execute("UPDATE orders SET status='cancelled',cancelled_at=NOW(),stock_released_at=NOW() WHERE id=?",[order.id]);}await connection.commit();}catch(error){await connection.rollback();throw error;}finally{connection.release();}
@@ -118,8 +141,13 @@ export async function createOrder(userId: string, input: CheckoutInput) {
   const method = shipping(input, items.map((item) => item.product));
   const cvs = ["family", "seven", "hilife"].includes(input.shippingMethod);
   if (cvs && (!input.store || !text(input.store.id, 40) || !text(input.store.name, 150))) throw new Error("請先選擇超商取貨門市。");
-  const address = cvs ? `${input.store!.brand}｜${input.store!.name}｜${input.store!.address}` : text(input.address, 500);
+  const postalCode=text(input.postalCode,6),city=text(input.city,20),district=text(input.district,20),detailAddress=text(input.address,500);
+  const address = cvs ? `${input.store!.brand}｜${input.store!.name}｜${input.store!.address}` : [postalCode,city,district,detailAddress].filter(Boolean).join(" ");
   if (!cvs && !address) throw new Error("請填寫完整收件地址。");
+  if(!cvs&&input.shippingMethod!=="pickup"&&(!/^\d{3,6}$/.test(postalCode)||!city||!district||detailAddress.length<5))throw new Error("請填寫完整的郵遞區號、縣市、地區與地址。");
+  const deliveryTime=input.shippingMethod==="blackcat"&&["before_13","14_18","any"].includes(String(input.deliveryTime))?String(input.deliveryTime):"any";
+  const invoiceType=input.invoiceType==="company"?"company":"personal",taxId=text(input.taxId,8),companyName=text(input.companyName,200);
+  if(invoiceType==="company"&&(!validTaxId(taxId)||companyName.length<2))throw new Error("公司發票請填寫正確的 8 位統一編號與公司抬頭。");
   const merchandise = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const requestedPoints=Math.max(0,Math.trunc(Number(input.pointsUsed||0))), maxPoints=Math.floor(merchandise*0.2), pointsUsed=Math.min(requestedPoints,maxPoints);
   const total = merchandise - pointsUsed + method.fee, pointsEarned=Math.floor((merchandise-pointsUsed)/100);
@@ -138,7 +166,7 @@ export async function createOrder(userId: string, input: CheckoutInput) {
     }
     const expiresAt = method.payment === "ecpay_card" ? new Date(Date.now() + 30 * 60_000) : method.payment === "cod" ? null : new Date(Date.now() + 3 * 86400_000);
     if(pointsUsed){const [balanceRows]=await connection.query<(RowDataPacket&{balance:number})[]>("SELECT COALESCE(SUM(points_delta),0) AS balance FROM loyalty_transactions WHERE user_id=? FOR UPDATE",[userId]);if(Number(balanceRows[0]?.balance||0)<pointsUsed)throw new Error("可用點數不足，請重新確認。");}
-    const [result] = await connection.execute<ResultSetHeader>("INSERT INTO orders(order_number,user_id,customer_name,customer_email,customer_phone,total,status,shipping_method,shipping_address,note,payment_method,payment_status,store_id,store_name,store_address,payment_expires_at,points_used,points_earned) VALUES(?,?,?,?,?,?, 'pending',?,?,?,?,?,?,?,?,?,?,?)", [number, userId, customerName, customerEmail, customerPhone, total, method.label, address, text(input.note, 1000) || null, method.payment, method.paymentStatus, input.store ? text(input.store.id, 40) : null, input.store ? text(input.store.name, 150) : null, input.store ? text(input.store.address, 255) : null, expiresAt,pointsUsed,pointsEarned]);
+    const [result] = await connection.execute<ResultSetHeader>("INSERT INTO orders(order_number,user_id,customer_name,customer_email,customer_phone,total,status,shipping_method,shipping_address,note,payment_method,payment_status,store_id,store_name,store_address,payment_expires_at,points_used,points_earned,postal_code,city,district,delivery_time,invoice_type,tax_id,company_name,logistics_subtype) VALUES(?,?,?,?,?,?, 'pending',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [number, userId, customerName, customerEmail, customerPhone, total, method.label, address, text(input.note, 1000) || null, method.payment, method.paymentStatus, input.store ? text(input.store.id, 40) : null, input.store ? text(input.store.name, 150) : null, input.store ? text(input.store.address, 255) : null, expiresAt,pointsUsed,pointsEarned,postalCode||null,city||null,district||null,deliveryTime,invoiceType,taxId||null,companyName||null,input.shippingMethod==="pickup"?null:logisticsSubtype(input.shippingMethod)]);
     for (const item of items) await connection.execute("INSERT INTO order_items(order_id,product_id,variant_id,product_name,sku,option_values,unit_price,quantity,image_url) VALUES(?,?,?,?,?,?,?,?,?)", [result.insertId, item.product.id, item.variant?.id || null, item.product.name, item.variant?.sku || item.product.sku, JSON.stringify(item.options), item.price, item.quantity, item.variant?.image || item.product.image || null]);
     if(pointsUsed)await connection.execute("INSERT INTO loyalty_transactions(user_id,points_delta,balance_reason,reference_key,order_id,note) VALUES(?,?,'redeem',?,?,?)",[userId,-pointsUsed,`redeem:${number}`,result.insertId,`訂單 ${number} 點數折抵`]);
     await connection.commit();
@@ -146,7 +174,7 @@ export async function createOrder(userId: string, input: CheckoutInput) {
   } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
 }
 
-export type AdminOrder = { id:number; number:string; customerName:string; customerPhone:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; shippingCarrier:string|null; trackingNumber:string|null; cancellationReason:string|null; createdAt:string };
+export type AdminOrder = { id:number; number:string; customerName:string; customerPhone:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; shippingCarrier:string|null; trackingNumber:string|null; cancellationReason:string|null; logisticsId:string|null; logisticsStatus:string|null; logisticsMessage:string|null; createdAt:string };
 export type AdminReturn = { id:number; orderNumber:string; customerName:string; reason:string; status:string; createdAt:string; resolutionNote:string | null; refundMethod:string|null; refundAmount:number|null; refundReference:string|null };
 export type CustomerOrderItem={name:string;sku:string;options:Record<string,string>;price:number;quantity:number;image:string|null};
 export type CustomerOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; shippingCarrier:string|null; trackingNumber:string|null; createdAt:string; returnStatus:string | null; returnNote:string | null; pointsUsed:number; pointsEarned:number; items:CustomerOrderItem[] };
@@ -165,6 +193,33 @@ export async function applyEcpayCallback(values: Record<string,string>) {
   const number=text(values.MerchantTradeNo,32); if(!number) throw new Error("缺少訂單編號。");
   const paid=values.RtnCode==="1"; const reference=text(values.TradeNo,100)||null;
   await database.execute("UPDATE orders SET payment_status=?,payment_reference=?,status=CASE WHEN ?='paid' AND status='pending' THEN 'confirmed' ELSE status END WHERE order_number=?",[paid?"paid":"failed",reference,paid?"paid":"failed",number]);
+}
+
+export async function createEcpayLogisticsOrder(orderId:number){
+  await ensure();const database=db();if(!database)throw new Error("資料庫尚未連線。");
+  const [rows]=await database.query<(RowDataPacket&{id:number;order_number:string;customer_name:string;customer_email:string;customer_phone:string;total:number;payment_status:string;payment_method:string;shipping_address:string;store_id:string|null;logistics_subtype:string|null;delivery_time:string|null;ecpay_logistics_id:string|null})[]>("SELECT id,order_number,customer_name,customer_email,customer_phone,total,payment_status,payment_method,shipping_address,store_id,logistics_subtype,delivery_time,ecpay_logistics_id FROM orders WHERE id=? LIMIT 1",[Math.trunc(orderId)]);
+  const order=rows[0];if(!order)throw new Error("找不到訂單。");if(order.ecpay_logistics_id)throw new Error("此訂單已建立綠界物流單。");
+  if(order.payment_status!=="paid"&&order.payment_status!=="cod")throw new Error("請先確認付款完成再建立物流單。");
+  const subtype=order.logistics_subtype;if(!subtype)throw new Error("門市自取不需要建立物流單。");
+  const isCvs=["FAMI","UNIMART","HILIFE"].includes(subtype);if(isCvs&&!order.store_id)throw new Error("訂單缺少超商門市代碼。");
+  const [items]=await database.query<(RowDataPacket&{product_name:string;quantity:number})[]>("SELECT product_name,quantity FROM order_items WHERE order_id=? ORDER BY id",[order.id]);
+  const senderName=text(process.env.ECPAY_LOGISTICS_SENDER_NAME||"燁達機車",10),senderPhone=text(process.env.ECPAY_LOGISTICS_SENDER_PHONE,20),senderZip=text(process.env.ECPAY_LOGISTICS_SENDER_ZIP||"236",6),senderAddress=text(process.env.ECPAY_LOGISTICS_SENDER_ADDRESS||process.env.STORE_RETURN_ADDRESS,60);
+  if(!senderPhone||!senderAddress)throw new Error("綠界物流寄件人電話或地址尚未設定。");
+  const base=process.env.APP_URL?.replace(/\/$/,"");if(!base)throw new Error("正式網站網址尚未設定。");
+  const fields:LogisticsValues={MerchantID:logisticsCredentials().merchantId,MerchantTradeNo:order.order_number,MerchantTradeDate:taipeiDate(),LogisticsType:isCvs?"CVS":"HOME",LogisticsSubType:subtype,GoodsAmount:String(Math.max(1,Math.min(20000,Math.round(Number(order.total))))),IsCollection:order.payment_method==="cod"?"Y":"N",GoodsName:items.map(item=>`${item.product_name}x${item.quantity}`).join(" ").replace(/[\^'`!@#%&*+\\\"<>|_\[\]]/g,"").slice(0,50)||"機車精品",SenderName:senderName,SenderCellPhone:senderPhone.replace(/\D/g,""),ReceiverName:text(order.customer_name,10),ReceiverCellPhone:order.customer_phone.replace(/\D/g,""),ReceiverEmail:text(order.customer_email,50),ServerReplyURL:`${base}/api/logistics/ecpay/callback`,TradeDesc:`燁達訂單 ${order.order_number}`};
+  if(isCvs)fields.ReceiverStoreID=order.store_id||"";else{fields.SenderZipCode=senderZip;fields.SenderAddress=senderAddress;fields.ReceiverZipCode=text(order.shipping_address.match(/^\d{3,6}/)?.[0],6);fields.ReceiverAddress=text(order.shipping_address.replace(/^\d{3,6}\s*/,""),60);fields.Temperature="0001";if(subtype==="TCAT"){fields.Distance="00";fields.Specification="0001";fields.ScheduledPickupTime="4";fields.ScheduledDeliveryTime=order.delivery_time==="before_13"?"1":order.delivery_time==="14_18"?"2":"4";}else fields.GoodsWeight="1";}
+  fields.CheckMacValue=logisticsCheckMacValue(fields);
+  const response=await fetch(logisticsEnvironment().createUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(fields),cache:"no-store"});
+  const body=await response.text();if(!response.ok||!body.startsWith("1|"))throw new Error(`綠界物流建單失敗：${body.replace(/^0\|\s*/,"").slice(0,180)}`);
+  const values=Object.fromEntries(new URLSearchParams(body.slice(2)));if(values.CheckMacValue&&values.CheckMacValue!==logisticsCheckMacValue(values))throw new Error("綠界物流回應驗證失敗。");
+  await database.execute("UPDATE orders SET ecpay_logistics_id=?,cvs_payment_no=?,cvs_validation_no=?,booking_note=?,logistics_status=?,logistics_status_message=?,shipping_carrier='綠界物流',tracking_number=? WHERE id=?",[text(values.AllPayLogisticsID,20)||null,text(values.CVSPaymentNo,15)||null,text(values.CVSValidationNo,10)||null,text(values.BookingNote,50)||null,text(values.RtnCode,20)||null,text(values.RtnMsg,200)||null,text(values.BookingNote||values.CVSPaymentNo,100)||null,order.id]);
+  return {logisticsId:values.AllPayLogisticsID||"",status:values.RtnCode||"",message:values.RtnMsg||"",trackingNumber:values.BookingNote||values.CVSPaymentNo||""};
+}
+
+export async function applyEcpayLogisticsCallback(values:Record<string,string>){
+  await ensure();if(values.CheckMacValue!==logisticsCheckMacValue(values))throw new Error("綠界物流通知驗證失敗。");const database=db();if(!database)throw new Error("資料庫尚未連線。");
+  const logisticsId=text(values.AllPayLogisticsID,20),number=text(values.MerchantTradeNo,32);if(!logisticsId&&!number)throw new Error("物流通知缺少訂單識別資料。");
+  await database.execute("UPDATE orders SET ecpay_logistics_id=COALESCE(NULLIF(?,''),ecpay_logistics_id),cvs_payment_no=COALESCE(NULLIF(?,''),cvs_payment_no),cvs_validation_no=COALESCE(NULLIF(?,''),cvs_validation_no),booking_note=COALESCE(NULLIF(?,''),booking_note),logistics_status=?,logistics_status_message=?,tracking_number=COALESCE(NULLIF(?,''),tracking_number) WHERE ecpay_logistics_id=? OR order_number=?",[logisticsId,text(values.CVSPaymentNo,15),text(values.CVSValidationNo,10),text(values.BookingNote,50),text(values.RtnCode||values.LogisticsStatus,20),text(values.RtnMsg,200),text(values.BookingNote||values.CVSPaymentNo,100),logisticsId,number]);
 }
 
 export async function createReturnRequest(userId:string, orderNumber:string, reason:string) {
@@ -189,8 +244,8 @@ export async function listCustomerOrders(userId:string): Promise<CustomerOrder[]
 
 export async function listAdminOrders(): Promise<AdminOrder[]> {
   await ensure(); await expireUnpaidOrders(); const database=db(); if (!database) return [];
-  const [rows] = await database.query<(RowDataPacket & { id:number; order_number:string; customer_name:string; customer_phone:string; total:number; status:string; payment_method:string; payment_status:string; shipping_method:string; shipping_carrier:string|null; tracking_number:string|null;cancellation_reason:string|null; created_at:Date })[]>("SELECT id,order_number,customer_name,customer_phone,total,status,payment_method,payment_status,shipping_method,shipping_carrier,tracking_number,cancellation_reason,created_at FROM orders ORDER BY created_at DESC,id DESC");
-  return rows.map((row)=>({id:Number(row.id),number:row.order_number,customerName:row.customer_name,customerPhone:row.customer_phone,total:Number(row.total),status:row.status,paymentMethod:row.payment_method,paymentStatus:row.payment_status,shippingMethod:row.shipping_method,shippingCarrier:row.shipping_carrier,trackingNumber:row.tracking_number,cancellationReason:row.cancellation_reason,createdAt:new Date(row.created_at).toISOString()}));
+  const [rows] = await database.query<(RowDataPacket & { id:number; order_number:string; customer_name:string; customer_phone:string; total:number; status:string; payment_method:string; payment_status:string; shipping_method:string; shipping_carrier:string|null; tracking_number:string|null;cancellation_reason:string|null;ecpay_logistics_id:string|null;logistics_status:string|null;logistics_status_message:string|null; created_at:Date })[]>("SELECT id,order_number,customer_name,customer_phone,total,status,payment_method,payment_status,shipping_method,shipping_carrier,tracking_number,cancellation_reason,ecpay_logistics_id,logistics_status,logistics_status_message,created_at FROM orders ORDER BY created_at DESC,id DESC");
+  return rows.map((row)=>({id:Number(row.id),number:row.order_number,customerName:row.customer_name,customerPhone:row.customer_phone,total:Number(row.total),status:row.status,paymentMethod:row.payment_method,paymentStatus:row.payment_status,shippingMethod:row.shipping_method,shippingCarrier:row.shipping_carrier,trackingNumber:row.tracking_number,cancellationReason:row.cancellation_reason,logisticsId:row.ecpay_logistics_id,logisticsStatus:row.logistics_status,logisticsMessage:row.logistics_status_message,createdAt:new Date(row.created_at).toISOString()}));
 }
 
 export async function updateOrderStatus(id:number,status:string,shippingCarrier?:string,trackingNumber?:string) {

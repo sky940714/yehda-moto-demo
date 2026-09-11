@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAutoTranslate } from "./auto-translate";
 import "./member-center.css";
 type P = {
@@ -28,6 +29,9 @@ type SavedCustomerCartItem = { productId:number; variantId?:number; options:Reco
 type MemberOrderItem={name:string;sku:string;options:Record<string,string>;price:number;quantity:number;image:string|null};
 type MemberOrder = { number:string; total:number; status:string; paymentMethod:string; paymentStatus:string; shippingMethod:string; shippingCarrier:string|null; trackingNumber:string|null; createdAt:string; returnStatus:string | null; returnNote:string | null; pointsUsed:number; pointsEarned:number; items:MemberOrderItem[] };
 type LoyaltyItem={id:number;pointsDelta:number;reason:string;note:string|null;createdAt:string};
+type CvsStore={shippingMethod:string;id:string;name:string;address:string;phone:string;brand:string;outside:boolean};
+
+function readSavedCvsStore():CvsStore|null{if(typeof window==="undefined")return null;try{const value=JSON.parse(sessionStorage.getItem("yada-ecpay-store")||"null") as CvsStore|null;return value?.id&&value?.shippingMethod?value:null;}catch{return null;}}
 
 const cartFromSaved = (items: SavedCustomerCartItem[]): CartItem[] => items.flatMap((item) => Array.from({ length: Math.max(1, Math.min(99, Number(item.quantity) || 1)) }, (_, index) => ({ productId: item.productId, variantId: item.variantId, options: item.options || {}, key: `${item.productId}:${item.variantId || "standard"}:${JSON.stringify(item.options || {})}:${index}` })));
 const cartForSaving = (items: CartItem[]): SavedCustomerCartItem[] => Object.values(items.reduce<Record<string, SavedCustomerCartItem>>((result, item) => { const key = `${item.productId}:${item.variantId || 0}:${JSON.stringify(item.options || {})}`; result[key] ??= { productId: item.productId, variantId: item.variantId, options: item.options || {}, quantity: 0 }; result[key].quantity++; return result; }, {}));
@@ -240,17 +244,16 @@ export default function App() {
   useAutoTranslate(lang);
   const tx = (zh: string, en: string) => (lang === "zh" ? zh : en);
   useEffect(() => {
-    try {
-      const stored=JSON.parse(localStorage.getItem("cart") || "[]") as unknown[];
-      setCart(stored.map((item,index)=>typeof item==="number"?{productId:item,key:`${item}:standard:${index}`,options:{}}:item as CartItem).filter((item)=>Number(item.productId)>0));
-      setFav(JSON.parse(localStorage.getItem("fav") || "[]"));
-      setLang(localStorage.getItem("site-language") === "en" ? "en" : "zh");
-      const saved = JSON.parse(
-        localStorage.getItem("category-order") || "null",
-      );
-      if (Array.isArray(saved) && saved.length === cats.length - 1)
-        setCategoryOrder(saved);
-    } catch {}
+    queueMicrotask(() => {
+      try {
+        const stored=JSON.parse(localStorage.getItem("cart") || "[]") as unknown[];
+        setCart(stored.map((item,index)=>typeof item==="number"?{productId:item,key:`${item}:standard:${index}`,options:{}}:item as CartItem).filter((item)=>Number(item.productId)>0));
+        setFav(JSON.parse(localStorage.getItem("fav") || "[]"));
+        setLang(localStorage.getItem("site-language") === "en" ? "en" : "zh");
+        const saved = JSON.parse(localStorage.getItem("category-order") || "null");
+        if (Array.isArray(saved) && saved.length === cats.length - 1) setCategoryOrder(saved);
+      } catch {}
+    });
     fetch("/api/auth").then((r) => r.json() as Promise<{ user?: { name?: string; email?: string; phone?: string | null;defaultAddress?:string } }>).then(async ({ user }) => {
       setMemberLoggedIn(Boolean(user));
       if (user?.name) setMemberName(user.name);
@@ -275,16 +278,21 @@ export default function App() {
     const action = params.get("auth"), token = params.get("token") || "";
     if (action === "verify" && token) {
       fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify", token }) })
-        .then(async (r) => { const data=await r.json() as { error?:string; message:string }; if(!r.ok) throw new Error(data.error); setToast(data.message); go("login"); history.replaceState({}, "", "/"); })
+        .then(async (r) => { const data=await r.json() as { error?:string; message:string }; if(!r.ok) throw new Error(data.error); setToast(data.message); setPage("login"); history.replaceState({}, "", "/"); })
         .catch((e) => setToast(e.message));
-    } else if (action === "reset" && token) { setAuthToken(token); setPage("reset"); }
-    else if (action === "phone") { setPage("phone"); history.replaceState({}, "", "/"); }
-    else if (action === "complete") { setMemberLoggedIn(true); setPage("account"); history.replaceState({}, "", "/"); }
-    else if (params.get("authError")) {
-      const authError = params.get("authError");
-      setToast(authError === "facebook_cancelled" ? "你已取消 Facebook 登入。" : authError === "facebook" ? "Facebook 登入失敗，請稍後再試。" : "社群登入失敗，請重新嘗試。");
-      setPage("login"); history.replaceState({}, "", "/");
-    }
+    } else queueMicrotask(() => {
+      if (action === "reset" && token) { setAuthToken(token); setPage("reset"); }
+      else if (action === "login") { setPostLoginPage(params.get("returnTo") === "checkout" ? "checkout" : "home"); setPage("login"); history.replaceState({}, "", "/"); }
+      else if (action === "phone") { setPage("phone"); history.replaceState({}, "", "/"); }
+      else if (action === "complete") { setMemberLoggedIn(true); setPage("account"); history.replaceState({}, "", "/"); }
+      else if (params.get("ecpayStore")) { setPage("checkout"); setStep(2); history.replaceState({}, "", "/"); }
+      else if (params.get("member")==="orders") { setPage("account"); history.replaceState({}, "", "/"); }
+      else if (params.get("authError")) {
+        const authError = params.get("authError");
+        setToast(authError === "facebook_cancelled" ? "你已取消 Facebook 登入。" : authError === "facebook" ? "Facebook 登入失敗，請稍後再試。" : "社群登入失敗，請重新嘗試。");
+        setPage("login"); history.replaceState({}, "", "/");
+      }
+    });
     return()=>{window.removeEventListener("focus",refreshCatalog);document.removeEventListener("visibilitychange",refreshCatalog);};
   }, []);
   useEffect(() => {
@@ -763,6 +771,7 @@ export default function App() {
         {page === "reset" && <PasswordReset token={authToken} done={() => { history.replaceState({}, "", "/"); go("login"); }} />}
         {page === "account" && (
           <MemberCenter
+            key={`${memberName}:${memberEmail}:${memberPhone||""}:${memberAddress}`}
             name={memberName}
             email={memberEmail}
             phone={memberPhone}
@@ -849,16 +858,18 @@ export default function App() {
         </div>
         <div>
           <b>{tx("快速連結", "QUICK LINKS")}</b>
-          <a>{tx("所有商品", "Shop All")}</a>
-          <a>{tx("品牌專區", "Brands")}</a>
-          <a>{tx("車種專區", "Shop by Bike")}</a>
+          <button type="button" onClick={()=>go("products")}>{tx("所有商品", "Shop All")}</button>
+          <button type="button" onClick={()=>go("brands")}>{tx("品牌專區", "Brands")}</button>
+          <button type="button" onClick={goFit}>{tx("車種專區", "Shop by Bike")}</button>
         </div>
         <div>
           <b>{tx("顧客服務", "CUSTOMER CARE")}</b>
           <a href="#faq">{tx("常見問題 FAQ", "FAQ")}</a>
-          <a>{tx("配送說明", "Shipping")}</a>
-          <a>{tx("購物須知", "Shopping Guide")}</a>
-          <a>{tx("退換貨政策", "Returns")}</a>
+          <Link href="/shipping">{tx("配送說明", "Shipping")}</Link>
+          <Link href="/shopping-guide">{tx("購物須知", "Shopping Guide")}</Link>
+          <Link href="/returns-policy">{tx("退換貨政策", "Returns")}</Link>
+          <Link href="/privacy">{tx("隱私權政策", "Privacy")}</Link>
+          <Link href="/terms">{tx("服務條款", "Terms")}</Link>
         </div>
         <div>
           <b>{tx("營業資訊", "STORE INFORMATION")}</b>
@@ -1598,9 +1609,6 @@ function MemberCenter({
   const [points,setPoints]=useState(0),[pointHistory,setPointHistory]=useState<LoyaltyItem[]>([]),[pointsLoading,setPointsLoading]=useState(true);
   const [returning, setReturning] = useState("");
   const [orderMessage, setOrderMessage] = useState("");
-  useEffect(() => setDraftName(name), [name]);
-  useEffect(()=>setAddress(defaultAddress),[defaultAddress]);
-  useEffect(()=>setPhoneDraft(phone||""),[phone]);
   useEffect(() => { fetch("/api/member/orders", { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(); const data=await response.json() as {orders?:MemberOrder[]}; setOrders(Array.isArray(data.orders)?data.orders:[]); }).catch(()=>setOrderMessage("訂單資料暫時無法載入，請稍後重試。")).finally(()=>setOrdersLoading(false)); }, []);
   useEffect(()=>{fetch("/api/member/loyalty",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error();const data=await response.json() as {balance?:number;transactions?:LoyaltyItem[]};setPoints(Number(data.balance||0));setPointHistory(Array.isArray(data.transactions)?data.transactions:[]);}).finally(()=>setPointsLoading(false));},[]);
   const submitName = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -2206,14 +2214,16 @@ function CheckoutFlow({
   customerDefaults: { name: string; email: string; phone: string;address:string };
   finish: () => void;
 }) {
-  const [shipMethod, setShipMethod] = useState("blackcat");
-  const [selectedStore, setSelectedStore] = useState("");
+  const [shipMethod, setShipMethod] = useState(()=>readSavedCvsStore()?.shippingMethod||"blackcat");
+  const [selectedStore, setSelectedStore] = useState<CvsStore|null>(()=>readSavedCvsStore());
   const [paymentMethod, setPaymentMethod] = useState<"ecpay_card" | "ecpay_atm" | "ecpay_cvs" | "cod">("ecpay_card");
   const [customer, setCustomer] = useState({ name: customerDefaults.name, email: customerDefaults.email, phone: customerDefaults.phone, address: customerDefaults.address, note: "" });
   const [order, setOrder] = useState<{ number: string; payment: string; total: number } | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [availablePoints,setAvailablePoints]=useState(0),[pointsToUse,setPointsToUse]=useState(0);
+  const [postalCode,setPostalCode]=useState("236"),[city,setCity]=useState("新北市"),[district,setDistrict]=useState("土城區"),[deliveryTime,setDeliveryTime]=useState<"before_13"|"14_18"|"any">("any");
+  const [invoiceType,setInvoiceType]=useState<"personal"|"company">("personal"),[taxId,setTaxId]=useState(""),[companyName,setCompanyName]=useState("");
   const shipFees: Record<string, number> = {
     blackcat: 130,
     post: 80,
@@ -2226,39 +2236,15 @@ function CheckoutFlow({
   const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
   const maxPoints=Math.min(availablePoints,Math.floor(total*0.2));
   useEffect(()=>{fetch("/api/member/loyalty").then(async response=>{if(!response.ok)return;const data=await response.json() as {balance?:number};setAvailablePoints(Number(data.balance||0));}).catch(()=>{});},[]);
-  useEffect(()=>{if(!isCvs&&paymentMethod==="cod")setPaymentMethod("ecpay_card");},[isCvs,paymentMethod]);
-  const cvs =
-    shipMethod === "family"
-      ? {
-          brand: "全家便利商店",
-          id: "020599",
-          name: "土城中華店",
-          address: "新北市土城區中華路一段 70 號",
-          phone: "02-2260-0000",
-        }
-      : shipMethod === "seven"
-        ? {
-          brand: "7-ELEVEN",
-          id: "254918",
-          name: "裕生門市",
-          address: "新北市土城區裕生路 68 號",
-          phone: "02-2270-0000",
-          }
-      : {
-            brand: "萊爾富",
-            id: "F20615",
-            name: "土城城央店",
-            address: "新北市土城區中央路一段 88 號",
-            phone: "02-2260-0000",
-          };
   const updateCustomer = (field: keyof typeof customer, value: string) => setCustomer((current) => ({ ...current, [field]: value }));
   const submitOrder = async () => {
     setSubmitError(""); setSubmitting(true);
     try {
-      const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingMethod: shipMethod, paymentMethod, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, address: customer.address, note: customer.note, pointsUsed:Math.min(Math.max(0,Math.trunc(pointsToUse)),maxPoints), store: isCvs && selectedStore === shipMethod ? { id: cvs.id, name: cvs.name, address: cvs.address, brand: cvs.brand } : undefined }) });
+      const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingMethod: shipMethod, paymentMethod, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, address: customer.address, note: customer.note, pointsUsed:Math.min(Math.max(0,Math.trunc(pointsToUse)),maxPoints), store: isCvs && selectedStore?.shippingMethod===shipMethod ? { id:selectedStore.id,name:selectedStore.name,address:selectedStore.address,brand:selectedStore.brand } : undefined, postalCode,city,district,deliveryTime,invoiceType,taxId:invoiceType==="company"?taxId:undefined,companyName:invoiceType==="company"?companyName:undefined }) });
       const data = await response.json() as { error?: string; orderNumber?: string; paymentMethod?: string; total?: number };
       if (!response.ok || !data.orderNumber) throw new Error(data.error || "建立訂單失敗。");
       setOrder({ number: data.orderNumber, payment: data.paymentMethod || paymentMethod, total: data.total || total });
+      sessionStorage.removeItem("yada-ecpay-store");
       if (paymentMethod !== "cod") {
         const paymentResponse = await fetch("/api/payments/ecpay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderNumber: data.orderNumber }) });
         const payment = await paymentResponse.json() as { error?: string; action?: string; fields?: Record<string, string> };
@@ -2325,7 +2311,9 @@ function CheckoutFlow({
               value={shipMethod}
               onChange={(method) => {
                 setShipMethod(method);
-                setSelectedStore("");
+                setSelectedStore(null);
+                sessionStorage.removeItem("yada-ecpay-store");
+                if(!["family","seven","hilife"].includes(method)&&paymentMethod==="cod")setPaymentMethod("ecpay_card");
               }}
             />
           )}
@@ -2353,22 +2341,15 @@ function CheckoutFlow({
                 <>
                   <label>
                     郵遞區號
-                    <input inputMode="numeric" defaultValue="236" />
+                    <input inputMode="numeric" value={postalCode} onChange={event=>setPostalCode(event.target.value.replace(/\D/g,"").slice(0,6))} required />
                   </label>
                   <label>
                     縣市
-                    <select>
-                      <option>新北市</option>
-                      <option>台北市</option>
-                      <option>桃園市</option>
-                    </select>
+                    <input value={city} onChange={event=>setCity(event.target.value)} placeholder="例如：新北市" required />
                   </label>
                   <label>
                     地區
-                    <select>
-                      <option>土城區</option>
-                      <option>板橋區</option>
-                    </select>
+                    <input value={district} onChange={event=>setDistrict(event.target.value)} placeholder="例如：土城區" required />
                   </label>
                   <label className="wide">
                     詳細地址
@@ -2377,10 +2358,10 @@ function CheckoutFlow({
                   {shipMethod === "blackcat" && (
                     <label className="wide">
                       希望配送時段（選填）
-                      <select>
-                        <option>不指定</option>
-                        <option>13:00 前</option>
-                        <option>14:00–18:00</option>
+                      <select value={deliveryTime} onChange={event=>setDeliveryTime(event.target.value as typeof deliveryTime)}>
+                        <option value="any">不指定</option>
+                        <option value="before_13">13:00 前</option>
+                        <option value="14_18">14:00–18:00</option>
                       </select>
                     </label>
                   )}
@@ -2394,30 +2375,30 @@ function CheckoutFlow({
                 <div className="wide border border-zinc-300 bg-zinc-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <b className="block text-sm">{cvs.brand}取貨門市</b>
-                      <span className="text-[10px] text-zinc-500">測試階段先使用門市選擇器；部署後接上綠界門市電子地圖。</span>
+                      <b className="block text-sm">{shipMethod==="family"?"全家便利商店":shipMethod==="seven"?"7-ELEVEN":"萊爾富"}取貨門市</b>
+                      <span className="text-[10px] text-zinc-500">將前往綠界官方門市電子地圖，選完後自動返回結帳頁。</span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setSelectedStore(shipMethod)}
+                      onClick={() => location.assign(`/api/logistics/ecpay/map?shippingMethod=${encodeURIComponent(shipMethod)}`)}
                       className="bg-[#17181d] px-4 py-3 text-xs font-bold text-white"
                     >
-                      {selectedStore === shipMethod
+                      {selectedStore?.shippingMethod === shipMethod
                         ? "重新選擇門市"
                         : "選擇取貨門市"}{" "}
                       →
                     </button>
                   </div>
-                  {selectedStore === shipMethod ? (
+                  {selectedStore?.shippingMethod === shipMethod ? (
                     <div className="mt-4 grid gap-2 border-l-2 border-[#654cff] bg-white p-4 text-xs">
                       <b>
-                        {cvs.name}　
+                        {selectedStore.name}　
                         <span className="font-normal text-zinc-400">
-                          店號 {cvs.id}
+                          店號 {selectedStore.id}
                         </span>
                       </b>
-                      <span>{cvs.address}</span>
-                      <span>門市電話：{cvs.phone}</span>
+                      <span>{selectedStore.address}</span>
+                      {selectedStore.phone&&<span>門市電話：{selectedStore.phone}</span>}
                     </div>
                   ) : (
                     <p className="mt-4 text-xs text-[#a94f00]">
@@ -2436,22 +2417,15 @@ function CheckoutFlow({
                   </div>
                   <label className="wide">
                     自取備註（選填）
-                    <input placeholder="有其他需求可在此留言" />
+                    <input value={customer.note} onChange={event=>updateCustomer("note",event.target.value)} placeholder="有其他需求可在此留言" />
                   </label>
                 </>
               )}
               <label>
                 發票類型
-                <select><option>一般電子發票（隨貨提供證明）</option><option>公司用電子發票</option></select>
+                <select value={invoiceType} onChange={event=>setInvoiceType(event.target.value as typeof invoiceType)}><option value="personal">一般電子發票</option><option value="company">公司用電子發票</option></select>
               </label>
-              <label>
-                公司統一編號（選填）
-                <input inputMode="numeric" maxLength={8} placeholder="8 位數統編" />
-              </label>
-              <label className="wide">
-                公司抬頭（選填）
-                <input placeholder="需要統編時請填寫公司名稱" />
-              </label>
+              {invoiceType==="company"&&<><label>公司統一編號<input inputMode="numeric" maxLength={8} value={taxId} onChange={event=>setTaxId(event.target.value.replace(/\D/g,"").slice(0,8))} placeholder="8 位數統編" required /></label><label className="wide">公司抬頭<input value={companyName} onChange={event=>setCompanyName(event.target.value)} placeholder="請填寫公司完整名稱" required /></label></>}
               <div className="wide notice">
                 以上資料會顯示於後台訂單管理。
                 {isCvs
@@ -2893,7 +2867,7 @@ function MembersManager() {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("members-cache") || "null");
-      if (Array.isArray(saved)) setMembers(saved);
+      if (Array.isArray(saved)) queueMicrotask(()=>setMembers(saved));
     } catch {}
   }, []);
   useEffect(() => {
@@ -3132,7 +3106,7 @@ function MembersManagerV2() {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("members-cache") || "null");
-      if (Array.isArray(saved)) setMembers(saved);
+      if (Array.isArray(saved)) queueMicrotask(()=>setMembers(saved));
     } catch {}
   }, []);
   useEffect(() => {
