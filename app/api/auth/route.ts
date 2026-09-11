@@ -5,7 +5,10 @@ import { isSecureRequest } from "../../../db/http";
 
 const COOKIE = "yada_session";
 const jsonError = (message: string, status = 400) => NextResponse.json({ error: message }, { status });
-const link = (request: Request, action: string, token: string) => `${new URL(request.url).origin}/?auth=${action}&token=${encodeURIComponent(token)}`;
+const link = (request: Request, action: string, token: string) => {
+  const origin = process.env.APP_URL?.replace(/\/$/, "") || new URL(request.url).origin;
+  return `${origin}/?auth=${action}&token=${encodeURIComponent(token)}`;
+};
 
 export async function GET() {
   const jar = await cookies();

@@ -5,15 +5,17 @@ import { autoPostForm, logisticsCredentials, logisticsEnvironment, logisticsStat
 
 export async function GET(request: Request) {
   const user = await currentUser((await cookies()).get("yada_session")?.value);
-  if (!user) return NextResponse.redirect(new URL("/?auth=login&returnTo=checkout", request.url));
+  const requestUrl = new URL(request.url);
+  const publicOrigin = process.env.APP_URL?.replace(/\/$/, "") || requestUrl.origin;
+  if (!user) return NextResponse.redirect(new URL("/?auth=login&returnTo=checkout", publicOrigin));
   try {
-    const url = new URL(request.url);
+    const url = requestUrl;
     const shippingMethod = url.searchParams.get("shippingMethod") || "";
     const subtype = logisticsSubtype(shippingMethod);
     if (!["FAMI", "UNIMART", "HILIFE"].includes(subtype)) throw new Error("請選擇超商取貨方式。");
     const tradeNumber = `M${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase()}`.slice(0, 20);
     const { merchantId } = logisticsCredentials();
-    const base = process.env.APP_URL?.replace(/\/$/, "") || url.origin;
+    const base = publicOrigin;
     const fields = {
       MerchantID: merchantId,
       MerchantTradeNo: tradeNumber,
@@ -31,4 +33,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "無法開啟綠界門市地圖。" }, { status: 503 });
   }
 }
-
