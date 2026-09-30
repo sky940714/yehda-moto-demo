@@ -2438,9 +2438,9 @@ function CheckoutFlow({
           )}
           {step === 3 && (
             <>
-              <div className="choices">{[["ecpay_card", "綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（綠界測試環境）"], ["ecpay_atm", "綠界 ATM 虛擬帳號", "付款期限與帳號由綠界付款頁產生"], ["ecpay_cvs", "綠界超商代碼", "取得繳費代碼後至合作超商付款"], ...(isCvs ? [["cod", "超商取貨付款", "到指定超商門市取貨時付款"]] : [])].map(([id, title, detail]) => <label key={id}><input type="radio" name="payment" checked={paymentMethod === id} onChange={() => setPaymentMethod(id as typeof paymentMethod)} /><b>{title}</b><span>{detail}</span></label>)}</div>
+              <div className="choices">{[["ecpay_card", "綠界科技｜信用卡一次付清", "VISA · Mastercard · JCB（由綠界安全付款頁處理）"], ["ecpay_atm", "綠界 ATM 虛擬帳號", "付款期限與帳號由綠界付款頁產生"], ["ecpay_cvs", "綠界超商代碼", "取得繳費代碼後至合作超商付款"], ...(isCvs ? [["cod", "超商取貨付款", "到指定超商門市取貨時付款"]] : [])].map(([id, title, detail]) => <label key={id}><input type="radio" name="payment" checked={paymentMethod === id} onChange={() => setPaymentMethod(id as typeof paymentMethod)} /><b>{title}</b><span>{detail}</span></label>)}</div>
               <div className="notice">
-                ⓘ 信用卡、ATM 與超商代碼會使用綠界測試環境；卡號資料只會在綠界付款頁輸入。
+                ⓘ 信用卡、ATM 與超商代碼會交由綠界安全付款頁處理；卡號資料只會在綠界付款頁輸入。
                 </div>
               <label className="mt-4 block border border-[#d9d3ff] bg-[#f6f4ff] p-4 text-xs font-bold text-[#31266f]">使用會員點數（可用 {availablePoints} 點；本筆最多 {maxPoints} 點）<input className="mt-2 block w-full border border-[#bdb4f4] bg-white px-3 py-2" type="number" min="0" max={maxPoints} value={pointsToUse} onChange={event=>setPointsToUse(Math.min(maxPoints,Math.max(0,Number(event.target.value)||0)))} /><small className="mt-2 block font-normal text-[#655b95]">1 點折 NT$ 1，最高折商品金額 20%，不折運費。</small></label>
             </>
