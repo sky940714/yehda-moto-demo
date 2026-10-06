@@ -2214,10 +2214,12 @@ function CheckoutFlow({
   customerDefaults: { name: string; email: string; phone: string;address:string };
   finish: () => void;
 }) {
+  const { name: defaultName, email: defaultEmail, phone: defaultPhone, address: defaultAddress } = customerDefaults;
   const [shipMethod, setShipMethod] = useState(()=>readSavedCvsStore()?.shippingMethod||"blackcat");
   const [selectedStore, setSelectedStore] = useState<CvsStore|null>(()=>readSavedCvsStore());
   const [paymentMethod, setPaymentMethod] = useState<"ecpay_card" | "ecpay_atm" | "ecpay_cvs" | "cod">("ecpay_card");
-  const [customer, setCustomer] = useState({ name: customerDefaults.name, email: customerDefaults.email, phone: customerDefaults.phone, address: customerDefaults.address, note: "" });
+  const [customer, setCustomer] = useState({ name: defaultName, email: defaultEmail, phone: defaultPhone, address: defaultAddress, note: "" });
+  const customerEditedFields = useRef<Set<keyof typeof customer>>(new Set());
   const [order, setOrder] = useState<{ number: string; payment: string; total: number } | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -2236,7 +2238,21 @@ function CheckoutFlow({
   const isCvs = ["family", "seven", "hilife"].includes(shipMethod);
   const maxPoints=Math.min(availablePoints,Math.floor(total*0.2));
   useEffect(()=>{fetch("/api/member/loyalty").then(async response=>{if(!response.ok)return;const data=await response.json() as {balance?:number};setAvailablePoints(Number(data.balance||0));}).catch(()=>{});},[]);
-  const updateCustomer = (field: keyof typeof customer, value: string) => setCustomer((current) => ({ ...current, [field]: value }));
+  useEffect(() => {
+    setCustomer((current) => {
+      const next = { ...current };
+      const sync = (field: 'name' | 'email' | 'phone' | 'address', value: string) => {
+        const isInitialPlaceholder = field === 'name' && current.name === '會員';
+        if (value.trim() && (!customerEditedFields.current.has(field) || isInitialPlaceholder)) next[field] = value.trim();
+      };
+      sync('name', defaultName); sync('email', defaultEmail); sync('phone', defaultPhone); sync('address', defaultAddress);
+      return next;
+    });
+  }, [defaultName, defaultEmail, defaultPhone, defaultAddress]);
+  const updateCustomer = (field: keyof typeof customer, value: string) => {
+    customerEditedFields.current.add(field);
+    setCustomer((current) => ({ ...current, [field]: value }));
+  };
   const submitOrder = async () => {
     setSubmitError(""); setSubmitting(true);
     try {
