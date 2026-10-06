@@ -72,6 +72,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${STAGING_CADDYFILE:-./staging.Caddyfile}:/etc/caddy/staging.caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

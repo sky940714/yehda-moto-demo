@@ -1,0 +1,2 @@
+# The production server mounts its protected staging route from /opt/yada-staging/Caddyfile.
+# Keep this local fallback empty so the main site can run without staging configured.

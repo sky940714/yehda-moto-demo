@@ -6,3 +6,5 @@ yada.motorcycles, www.yada.motorcycles {
     header_up X-Forwarded-Proto {scheme}
   }
 }
+
+import /etc/caddy/staging.caddy
