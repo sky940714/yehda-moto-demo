@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: --innodb-buffer-pool-size=128M --max-connections=60 --performance-schema=OFF
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - staging_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD_HASH_B64: ${ADMIN_PASSWORD_HASH_B64:-}
+      APP_URL: ${APP_URL}
+      ECPAY_ENV: stage
+      ECPAY_MERCHANT_ID: ${ECPAY_MERCHANT_ID}
+      ECPAY_HASH_KEY: ${ECPAY_HASH_KEY}
+      ECPAY_HASH_IV: ${ECPAY_HASH_IV}
+      ECPAY_LOGISTICS_ENV: stage
+      ECPAY_LOGISTICS_MERCHANT_ID: ${ECPAY_LOGISTICS_MERCHANT_ID:-}
+      ECPAY_LOGISTICS_HASH_KEY: ${ECPAY_LOGISTICS_HASH_KEY:-}
+      ECPAY_LOGISTICS_HASH_IV: ${ECPAY_LOGISTICS_HASH_IV:-}
+      ECPAY_LOGISTICS_SENDER_NAME: ${ECPAY_LOGISTICS_SENDER_NAME:-}
+      ECPAY_LOGISTICS_SENDER_PHONE: ${ECPAY_LOGISTICS_SENDER_PHONE:-}
+      ECPAY_LOGISTICS_SENDER_ZIP: ${ECPAY_LOGISTICS_SENDER_ZIP:-236}
+      ECPAY_LOGISTICS_SENDER_ADDRESS: ${ECPAY_LOGISTICS_SENDER_ADDRESS:-}
+      STORE_RETURN_ADDRESS: ${STORE_RETURN_ADDRESS:-}
+      STORE_RETURN_RECIPIENT: ${STORE_RETURN_RECIPIENT:-}
+      STORE_RETURN_PHONE: ${STORE_RETURN_PHONE:-}
+      STORE_NOTIFICATION_EMAIL: ${STORE_NOTIFICATION_EMAIL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      default:
+      formal_proxy:
+        aliases:
+          - staging-app
+
+volumes:
+  staging_mysql_data:
+
+networks:
+  formal_proxy:
+    external: true
+    name: yada_default
